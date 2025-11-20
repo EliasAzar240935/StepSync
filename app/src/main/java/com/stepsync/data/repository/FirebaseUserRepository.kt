@@ -180,4 +180,8 @@ class FirebaseUserRepository @Inject constructor(
             null
         }
     }
+
+    override suspend fun logout() {
+        auth.signOut()
+    }
 }
