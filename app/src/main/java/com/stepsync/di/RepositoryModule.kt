@@ -10,6 +10,7 @@ import javax.inject.Singleton
 
 /**
  * Hilt module for providing repository instances
+ * Updated to use Firebase repositories
  */
 @Module
 @InstallIn(SingletonComponent::class)
@@ -18,36 +19,36 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindUserRepository(
-        userRepositoryImpl: UserRepositoryImpl
+        firebaseUserRepository: FirebaseUserRepository
     ): UserRepository
 
     @Binds
     @Singleton
     abstract fun bindStepRecordRepository(
-        stepRecordRepositoryImpl: StepRecordRepositoryImpl
+        firebaseStepRepository: FirebaseStepRepository
     ): StepRecordRepository
 
     @Binds
     @Singleton
     abstract fun bindActivityRepository(
-        activityRepositoryImpl: ActivityRepositoryImpl
+        firebaseActivityRepository: FirebaseActivityRepository
     ): ActivityRepository
 
     @Binds
     @Singleton
     abstract fun bindGoalRepository(
-        goalRepositoryImpl: GoalRepositoryImpl
+        firebaseGoalRepository: FirebaseGoalRepository
     ): GoalRepository
 
     @Binds
     @Singleton
     abstract fun bindFriendRepository(
-        friendRepositoryImpl: FriendRepositoryImpl
+        firebaseFriendRepository: FirebaseFriendRepository
     ): FriendRepository
 
     @Binds
     @Singleton
     abstract fun bindAchievementRepository(
-        achievementRepositoryImpl: AchievementRepositoryImpl
+        firebaseAchievementRepository: FirebaseAchievementRepository
     ): AchievementRepository
 }
