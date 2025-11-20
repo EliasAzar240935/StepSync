@@ -81,6 +81,11 @@ class UserRepositoryImpl @Inject constructor(
         return hash.joinToString("") { "%02x".format(it) }
     }
 
+    override suspend fun logout() {
+        // For Room implementation, logout is handled by clearing SharedPreferences
+        // This is typically done in the ViewModel or Application layer
+    }
+
     private fun UserEntity.toDomainModel(): User {
         return User(
             id = id,

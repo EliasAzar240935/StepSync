@@ -28,7 +28,8 @@ render.experimental.xml
 *.keystore
 
 # Google Services (e.g. APIs or Firebase)
-google-services.json
+# The placeholder google-services.json is tracked for reference
+# Real google-services.json files should never be committed
 
 # Android Profiling
 *.hprof

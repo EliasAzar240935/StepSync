@@ -15,7 +15,8 @@ A comprehensive Android fitness tracking application built with Kotlin and Jetpa
 
 ### Technical Features
 - **MVVM Architecture** with Clean Architecture principles
-- **Room Database** for local data persistence
+- **Firebase Authentication** for secure user authentication
+- **Firestore Database** for cloud-based data persistence with offline support
 - **Hilt** for Dependency Injection
 - **Jetpack Compose** for modern UI with Material Design 3
 - **Coroutines & Flow** for asynchronous operations
@@ -61,14 +62,16 @@ app/
 
 ## Database Schema
 
-### Entities
-- **User**: User profile information
-- **StepRecord**: Daily step count records
-- **Activity**: Tracked fitness activities
-- **Goal**: User-defined fitness goals
-- **Friend**: Friend relationships
-- **Achievement**: Unlocked achievements
-- **Challenge**: Group challenges
+### Firestore Collections
+The app uses Firebase Firestore with the following collections:
+- **users**: User profile information
+- **stepRecords**: Daily step count records
+- **activities**: Tracked fitness activities
+- **goals**: User-defined fitness goals
+- **friends**: Friend relationships
+- **achievements**: Unlocked achievements
+
+See [FIREBASE_SETUP.md](FIREBASE_SETUP.md) for detailed Firestore structure and setup instructions.
 
 ## Getting Started
 
@@ -77,6 +80,7 @@ app/
 - Android SDK 26 or higher
 - Kotlin 1.9.20 or later
 - Gradle 8.2 or later
+- **Firebase Project** (see [FIREBASE_SETUP.md](FIREBASE_SETUP.md))
 
 ### Building the Project
 
@@ -86,11 +90,15 @@ app/
    cd StepSync
    ```
 
-2. Open the project in Android Studio
+2. Set up Firebase:
+   - Follow the instructions in [FIREBASE_SETUP.md](FIREBASE_SETUP.md)
+   - Download and place `google-services.json` in the `app/` directory
 
-3. Sync Gradle files
+3. Open the project in Android Studio
 
-4. Build and run the application on an emulator or physical device
+4. Sync Gradle files
+
+5. Build and run the application on an emulator or physical device
 
 ### Required Permissions
 - `ACTIVITY_RECOGNITION` - For step counting
@@ -107,9 +115,10 @@ app/
 - **Material Design 3** - Design system
 
 ### Architecture Components
-- **Room** - Local database
+- **Firebase Authentication** - User authentication
+- **Firestore** - Cloud database with offline support
 - **ViewModel** - UI state management
-- **LiveData/Flow** - Reactive data streams
+- **Flow** - Reactive data streams
 - **Navigation Component** - Screen navigation
 
 ### Dependency Injection
@@ -137,9 +146,10 @@ app/
 ## Features in Detail
 
 ### Authentication
-- Email/password registration
-- User login with validation
-- Profile creation with fitness goals
+- Firebase email/password authentication
+- User registration with profile creation
+- Secure user login with validation
+- Session management with Firebase Auth
 
 ### Step Tracking
 - Real-time step counting using device sensors
@@ -175,28 +185,34 @@ app/
 
 The app follows Clean Architecture principles with three main layers:
 
-1. **Data Layer**: Database entities, DAOs, and repository implementations
+1. **Data Layer**: Firebase repositories, Firestore data access, and data models
 2. **Domain Layer**: Repository interfaces and business logic (use cases)
 3. **Presentation Layer**: ViewModels, UI screens (Composables)
 
 ### Key Design Patterns
 - **MVVM (Model-View-ViewModel)**: Separation of UI and business logic
-- **Repository Pattern**: Abstraction over data sources
+- **Repository Pattern**: Abstraction over data sources (Firebase)
 - **Dependency Injection**: Loose coupling and testability
 - **Observer Pattern**: Reactive UI updates with StateFlow
+- **Offline-First**: Firestore offline persistence for seamless user experience
 
 ## Future Enhancements
 
-- Backend API integration for user synchronization
-- Cloud data backup
+- Real-time friend activity updates
+- Push notifications with Firebase Cloud Messaging
 - Advanced analytics with machine learning
 - Integration with wearable devices
 - Social media sharing
 - Premium features (custom themes, advanced stats)
+- Multi-device synchronization
 
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
+
+## Data Migration
+
+**Note**: This app now uses Firebase for data storage. If you were using a previous version with Room Database, your local data will not be automatically migrated. For information about migrating from Room to Firebase, see [FIREBASE_MIGRATION.md](FIREBASE_MIGRATION.md).
 
 ## License
 

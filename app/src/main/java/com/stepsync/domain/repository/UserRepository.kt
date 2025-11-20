@@ -13,4 +13,5 @@ interface UserRepository {
     suspend fun updateUser(user: User)
     suspend fun updateDailyStepGoal(userId: Long, goal: Int)
     suspend fun authenticateUser(email: String, password: String): User?
+    suspend fun logout()
 }

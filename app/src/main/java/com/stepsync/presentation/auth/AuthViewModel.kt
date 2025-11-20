@@ -123,6 +123,22 @@ class AuthViewModel @Inject constructor(
         }
     }
 
+    fun logout() {
+        viewModelScope.launch {
+            try {
+                userRepository.logout()
+                // Clear session
+                sharedPreferences.edit().apply {
+                    clear()
+                    apply()
+                }
+                _uiState.value = AuthUiState.Idle
+            } catch (e: Exception) {
+                _uiState.value = AuthUiState.Error("Logout failed: ${e.message}")
+            }
+        }
+    }
+
     fun resetState() {
         _uiState.value = AuthUiState.Idle
     }

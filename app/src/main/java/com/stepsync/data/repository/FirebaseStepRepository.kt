@@ -1,0 +1,235 @@
+package com.stepsync.data.repository
+
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
+import com.stepsync.data.model.StepRecord
+import com.stepsync.domain.repository.StepRecordRepository
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.tasks.await
+import javax.inject.Inject
+
+/**
+ * Firebase implementation of StepRecordRepository
+ */
+class FirebaseStepRepository @Inject constructor(
+    private val auth: FirebaseAuth,
+    private val firestore: FirebaseFirestore
+) : StepRecordRepository {
+
+    private val stepRecordsCollection = firestore.collection("stepRecords")
+
+    override suspend fun getStepRecordByDate(userId: Long, date: String): StepRecord? {
+        val currentUser = auth.currentUser ?: return null
+        
+        return try {
+            val querySnapshot = stepRecordsCollection
+                .whereEqualTo("userId", currentUser.uid)
+                .whereEqualTo("date", date)
+                .limit(1)
+                .get()
+                .await()
+            
+            if (!querySnapshot.isEmpty) {
+                val document = querySnapshot.documents[0]
+                document.toObject(StepRecord::class.java)?.copy(
+                    id = document.id.hashCode().toLong(),
+                    userId = userId
+                )
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    override fun getAllStepRecords(userId: Long): Flow<List<StepRecord>> = callbackFlow {
+        val currentUser = auth.currentUser
+        if (currentUser == null) {
+            trySend(emptyList())
+            awaitClose { }
+            return@callbackFlow
+        }
+        
+        val registration = stepRecordsCollection
+            .whereEqualTo("userId", currentUser.uid)
+            .orderBy("date", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+                
+                val records = snapshot?.documents?.mapNotNull { document ->
+                    document.toObject(StepRecord::class.java)?.copy(
+                        id = document.id.hashCode().toLong(),
+                        userId = userId
+                    )
+                } ?: emptyList()
+                
+                trySend(records)
+            }
+        
+        awaitClose { registration.remove() }
+    }
+
+    override fun getStepRecordsBetweenDates(
+        userId: Long,
+        startDate: String,
+        endDate: String
+    ): Flow<List<StepRecord>> = callbackFlow {
+        val currentUser = auth.currentUser
+        if (currentUser == null) {
+            trySend(emptyList())
+            awaitClose { }
+            return@callbackFlow
+        }
+        
+        val registration = stepRecordsCollection
+            .whereEqualTo("userId", currentUser.uid)
+            .whereGreaterThanOrEqualTo("date", startDate)
+            .whereLessThanOrEqualTo("date", endDate)
+            .orderBy("date", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+                
+                val records = snapshot?.documents?.mapNotNull { document ->
+                    document.toObject(StepRecord::class.java)?.copy(
+                        id = document.id.hashCode().toLong(),
+                        userId = userId
+                    )
+                } ?: emptyList()
+                
+                trySend(records)
+            }
+        
+        awaitClose { registration.remove() }
+    }
+
+    override fun getRecentStepRecords(userId: Long, limit: Int): Flow<List<StepRecord>> = callbackFlow {
+        val currentUser = auth.currentUser
+        if (currentUser == null) {
+            trySend(emptyList())
+            awaitClose { }
+            return@callbackFlow
+        }
+        
+        val registration = stepRecordsCollection
+            .whereEqualTo("userId", currentUser.uid)
+            .orderBy("date", Query.Direction.DESCENDING)
+            .limit(limit.toLong())
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+                
+                val records = snapshot?.documents?.mapNotNull { document ->
+                    document.toObject(StepRecord::class.java)?.copy(
+                        id = document.id.hashCode().toLong(),
+                        userId = userId
+                    )
+                } ?: emptyList()
+                
+                trySend(records)
+            }
+        
+        awaitClose { registration.remove() }
+    }
+
+    override suspend fun getTotalStepsBetweenDates(
+        userId: Long,
+        startDate: String,
+        endDate: String
+    ): Int {
+        val currentUser = auth.currentUser ?: return 0
+        
+        return try {
+            val querySnapshot = stepRecordsCollection
+                .whereEqualTo("userId", currentUser.uid)
+                .whereGreaterThanOrEqualTo("date", startDate)
+                .whereLessThanOrEqualTo("date", endDate)
+                .get()
+                .await()
+            
+            querySnapshot.documents.sumOf { document ->
+                document.getLong("steps")?.toInt() ?: 0
+            }
+        } catch (e: Exception) {
+            0
+        }
+    }
+
+    override suspend fun insertOrUpdateStepRecord(
+        userId: Long,
+        date: String,
+        steps: Int,
+        distance: Float,
+        calories: Float
+    ) {
+        val currentUser = auth.currentUser ?: throw Exception("No authenticated user")
+        
+        try {
+            // Check if record exists for this date
+            val existingQuery = stepRecordsCollection
+                .whereEqualTo("userId", currentUser.uid)
+                .whereEqualTo("date", date)
+                .limit(1)
+                .get()
+                .await()
+            
+            val recordData = hashMapOf(
+                "userId" to currentUser.uid,
+                "date" to date,
+                "steps" to steps,
+                "distance" to distance,
+                "calories" to calories,
+                "timestamp" to System.currentTimeMillis()
+            )
+            
+            if (!existingQuery.isEmpty) {
+                // Update existing record
+                val documentId = existingQuery.documents[0].id
+                stepRecordsCollection.document(documentId).update(recordData as Map<String, Any>).await()
+            } else {
+                // Create new record
+                stepRecordsCollection.add(recordData).await()
+            }
+        } catch (e: Exception) {
+            throw Exception("Failed to save step record: ${e.message}")
+        }
+    }
+
+    override suspend fun updateSteps(userId: Long, date: String, steps: Int) {
+        val currentUser = auth.currentUser ?: throw Exception("No authenticated user")
+        
+        try {
+            val querySnapshot = stepRecordsCollection
+                .whereEqualTo("userId", currentUser.uid)
+                .whereEqualTo("date", date)
+                .limit(1)
+                .get()
+                .await()
+            
+            if (!querySnapshot.isEmpty) {
+                val documentId = querySnapshot.documents[0].id
+                stepRecordsCollection.document(documentId)
+                    .update(
+                        mapOf(
+                            "steps" to steps,
+                            "timestamp" to System.currentTimeMillis()
+                        )
+                    )
+                    .await()
+            }
+        } catch (e: Exception) {
+            throw Exception("Failed to update steps: ${e.message}")
+        }
+    }
+}

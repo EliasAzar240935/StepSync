@@ -3,6 +3,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("com.google.dagger.hilt.android")
     id("com.google.devtools.ksp")
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -111,6 +112,24 @@ dependencies {
     
     // Accompanist (for permissions)
     implementation("com.google.accompanist:accompanist-permissions:0.32.0")
+    
+    // Firebase BoM
+    implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
+    
+    // Firebase Authentication
+    implementation("com.google.firebase:firebase-auth-ktx")
+    
+    // Firestore Database
+    implementation("com.google.firebase:firebase-firestore-ktx")
+    
+    // Firebase Analytics
+    implementation("com.google.firebase:firebase-analytics-ktx")
+    
+    // Firebase Cloud Messaging
+    implementation("com.google.firebase:firebase-messaging-ktx")
+    
+    // Coroutines support for Firebase
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
     
     // Testing
     testImplementation("junit:junit:4.13.2")
