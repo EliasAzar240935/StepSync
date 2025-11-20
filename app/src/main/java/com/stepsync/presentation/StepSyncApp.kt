@@ -1,6 +1,5 @@
 package com.stepsync.presentation
 
-import android.content.SharedPreferences
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -10,12 +9,19 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.stepsync.presentation.activity.ActivityScreen
+import com.stepsync.presentation.activity.ActivityViewModel
 import com.stepsync.presentation.auth.AuthViewModel
 import com.stepsync.presentation.auth.LoginScreen
 import com.stepsync.presentation.auth.RegisterScreen
+import com.stepsync.presentation.goals.GoalsScreen
+import com.stepsync.presentation.goals.GoalsViewModel
 import com.stepsync.presentation.home.HomeScreen
 import com.stepsync.presentation.home.HomeViewModel
-import com.stepsync.util.Constants
+import com.stepsync.presentation.profile.ProfileScreen
+import com.stepsync.presentation.profile.ProfileViewModel
+import com.stepsync.presentation.social.SocialScreen
+import com.stepsync.presentation.social.SocialViewModel
 
 /**
  * Main app composable with navigation
@@ -79,6 +85,49 @@ fun StepSyncApp(
             )
         }
         
-        // Add other screens as needed
+        composable(Screen.Profile.route) {
+            val viewModel: ProfileViewModel = hiltViewModel()
+            ProfileScreen(
+                viewModel = viewModel,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onNavigateToLogin = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            )
+        }
+        
+        composable(Screen.Activity.route) {
+            val viewModel: ActivityViewModel = hiltViewModel()
+            ActivityScreen(
+                viewModel = viewModel,
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+        
+        composable(Screen.Goals.route) {
+            val viewModel: GoalsViewModel = hiltViewModel()
+            GoalsScreen(
+                viewModel = viewModel,
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+        
+        composable(Screen.Social.route) {
+            val viewModel: SocialViewModel = hiltViewModel()
+            SocialScreen(
+                viewModel = viewModel,
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
     }
 }
