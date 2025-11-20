@@ -210,6 +210,10 @@ The app follows Clean Architecture principles with three main layers:
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
+## Data Migration
+
+**Note**: This app now uses Firebase for data storage. If you were using a previous version with Room Database, your local data will not be automatically migrated. For information about migrating from Room to Firebase, see [FIREBASE_MIGRATION.md](FIREBASE_MIGRATION.md).
+
 ## License
 
 This project is created as a demonstration of Android development best practices.
