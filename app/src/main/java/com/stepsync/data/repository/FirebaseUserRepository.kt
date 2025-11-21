@@ -28,12 +28,12 @@ class FirebaseUserRepository @Inject constructor(
             if (firebaseUser != null) {
                 // Listen to user document changes
                 val docRef = usersCollection.document(firebaseUser.uid)
-                val registration = docRef.addSnapshotListener { snapshot, error ->
+                docRef.addSnapshotListener { snapshot, error ->
                     if (error != null) {
                         trySend(null)
                         return@addSnapshotListener
                     }
-                    
+
                     if (snapshot != null && snapshot.exists()) {
                         val user = snapshot.toObject(User::class.java)?.copy(
                             id = firebaseUser.uid.hashCode().toLong()
@@ -43,17 +43,16 @@ class FirebaseUserRepository @Inject constructor(
                         trySend(null)
                     }
                 }
-                
-                // Clean up listener when flow is cancelled
-                awaitClose { registration.remove() }
             } else {
                 trySend(null)
-                awaitClose { }
             }
         }
-        
+
         auth.addAuthStateListener(authStateListener)
-        awaitClose { auth.removeAuthStateListener(authStateListener) }
+
+        awaitClose {
+            auth.removeAuthStateListener(authStateListener)
+        }
     }
 
     override suspend fun getUserByEmail(email: String): User? {
@@ -90,13 +89,13 @@ class FirebaseUserRepository @Inject constructor(
             // Create Firebase Auth user
             val authResult = auth.createUserWithEmailAndPassword(email, password).await()
             val firebaseUser = authResult.user ?: throw Exception("User creation failed")
-            
+
             // Update profile with name
             val profileUpdates = UserProfileChangeRequest.Builder()
                 .setDisplayName(name)
                 .build()
             firebaseUser.updateProfile(profileUpdates).await()
-            
+
             // Create user document in Firestore
             val userDoc = hashMapOf(
                 "email" to email,
@@ -109,12 +108,19 @@ class FirebaseUserRepository @Inject constructor(
                 "createdAt" to System.currentTimeMillis(),
                 "updatedAt" to System.currentTimeMillis()
             )
-            
+
             usersCollection.document(firebaseUser.uid).set(userDoc).await()
-            
+
             return firebaseUser.uid.hashCode().toLong()
         } catch (e: FirebaseAuthException) {
-            throw Exception("Registration failed: ${e.message}")
+            // Handle specific Firebase Auth errors
+            val errorMessage = when (e.errorCode) {
+                "ERROR_EMAIL_ALREADY_IN_USE" -> "This email is already registered"
+                "ERROR_WEAK_PASSWORD" -> "Password is too weak. Use at least 6 characters"
+                "ERROR_INVALID_EMAIL" -> "Invalid email format"
+                else -> "Registration failed: ${e.message}"
+            }
+            throw Exception(errorMessage)
         } catch (e: Exception) {
             throw Exception("Registration failed: ${e.message}")
         }
@@ -162,22 +168,23 @@ class FirebaseUserRepository @Inject constructor(
         return try {
             // Sign in with Firebase Auth
             val authResult = auth.signInWithEmailAndPassword(email, password).await()
-            val firebaseUser = authResult.user ?: return null
-            
+            val firebaseUser = authResult.user ?: throw Exception("Authentication failed")
+
             // Get user document from Firestore
             val document = usersCollection.document(firebaseUser.uid).get().await()
-            
+
             if (document.exists()) {
                 document.toObject(User::class.java)?.copy(
                     id = firebaseUser.uid.hashCode().toLong()
                 )
             } else {
-                null
+                throw Exception("User profile not found in database")
             }
         } catch (e: FirebaseAuthException) {
-            null
+            // Propagate the actual Firebase error
+            throw Exception("Login failed: ${e.message}")
         } catch (e: Exception) {
-            null
+            throw e
         }
     }
 

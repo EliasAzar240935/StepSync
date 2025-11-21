@@ -114,8 +114,8 @@ fun GoalItem(goal: Goal) {
                 )
             }
 
-            val progress = (goal.currentValue / goal.targetValue).coerceIn(0f, 1f)
-            
+            val progress = (goal.currentValue.toFloat() / goal.targetValue.toFloat()).coerceIn(0f, 1f)
+
             LinearProgressIndicator(
                 progress = progress,
                 modifier = Modifier.fillMaxWidth()

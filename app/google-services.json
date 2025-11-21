@@ -1,23 +1,13 @@
 {
-  "_comment": "This is a placeholder file. Replace this with your actual google-services.json from Firebase Console",
-  "_instructions": [
-    "1. Go to Firebase Console (https://console.firebase.google.com/)",
-    "2. Select your project or create a new one",
-    "3. Add an Android app with package name: com.stepsync",
-    "4. Download the google-services.json file",
-    "5. Replace this file with the downloaded google-services.json",
-    "6. See FIREBASE_SETUP.md for detailed instructions"
-  ],
   "project_info": {
-    "project_number": "YOUR_PROJECT_NUMBER",
-    "firebase_url": "https://YOUR_PROJECT.firebaseio.com",
-    "project_id": "YOUR_PROJECT_ID",
-    "storage_bucket": "YOUR_PROJECT.appspot.com"
+    "project_number": "396662776438",
+    "project_id": "stepsync-1dcb8",
+    "storage_bucket": "stepsync-1dcb8.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "YOUR_MOBILE_SDK_APP_ID",
+        "mobilesdk_app_id": "1:396662776438:android:9e3f2ec04a841c4c027557",
         "android_client_info": {
           "package_name": "com.stepsync"
         }
@@ -25,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "YOUR_API_KEY"
+          "current_key": "AIzaSyBIWf98KV98j3OtvMTOBlu5763CtZ1CvfA"
         }
       ],
       "services": {

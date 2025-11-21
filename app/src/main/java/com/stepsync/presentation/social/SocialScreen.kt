@@ -204,7 +204,7 @@ fun FriendRequestItem(request: Friend, viewModel: SocialViewModel) {
                 )
             }
             Button(
-                onClick = { viewModel.acceptFriendRequest(request.friendId) }
+                onClick = { viewModel.acceptFriendRequest(request.friendUserId) }
             ) {
                 Text("Accept")
             }

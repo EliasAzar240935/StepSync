@@ -67,6 +67,10 @@ class AuthViewModel @Inject constructor(
                 _uiState.value = AuthUiState.Error("Password is required")
                 return
             }
+            password.length < 6 -> {
+                _uiState.value = AuthUiState.Error("Password must be at least 6 characters")
+                return
+            }
             password != confirmPassword -> {
                 _uiState.value = AuthUiState.Error("Passwords do not match")
                 return
@@ -101,13 +105,14 @@ class AuthViewModel @Inject constructor(
                     height = height,
                     fitnessGoal = fitnessGoal
                 )
-                
-                val user = userRepository.getUserByEmail(email)
+
+                // After successful registration, authenticate to get user data
+                val user = userRepository.authenticateUser(email, password)
                 if (user != null) {
                     saveUserSession(user)
                     _uiState.value = AuthUiState.Success(user)
                 } else {
-                    _uiState.value = AuthUiState.Error("Registration failed")
+                    _uiState.value = AuthUiState.Error("Registration completed but login failed. Please try logging in.")
                 }
             } catch (e: Exception) {
                 _uiState.value = AuthUiState.Error(e.message ?: "Registration failed")

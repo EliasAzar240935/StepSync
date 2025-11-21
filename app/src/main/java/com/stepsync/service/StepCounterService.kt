@@ -14,7 +14,7 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import com.stepsync.MainActivity
 import com.stepsync.R
-import com.stepsync.data.repository.StepRecordRepositoryImpl
+import com.stepsync.domain.repository.StepRecordRepository
 import com.stepsync.util.CalculationUtils
 import com.stepsync.util.Constants
 import com.stepsync.util.DateUtils
@@ -29,7 +29,7 @@ import javax.inject.Inject
 class StepCounterService : Service(), SensorEventListener {
 
     @Inject
-    lateinit var stepRecordRepository: StepRecordRepositoryImpl
+    lateinit var stepRecordRepository: StepRecordRepository
 
     @Inject
     lateinit var sharedPreferences: SharedPreferences

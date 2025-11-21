@@ -107,7 +107,7 @@ fun ActivityItem(activity: Activity) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = DateUtils.formatDuration(activity.duration),
+                        text = DateUtils.formatDuration(activity.duration.toLong()),
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
