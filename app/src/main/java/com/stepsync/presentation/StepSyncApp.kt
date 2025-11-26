@@ -22,6 +22,9 @@ import com.stepsync.presentation.profile.ProfileScreen
 import com.stepsync.presentation.profile.ProfileViewModel
 import com.stepsync.presentation.social.SocialScreen
 import com.stepsync.presentation.social.SocialViewModel
+import android.content.Context
+import androidx.compose.ui.platform.LocalContext
+import com.stepsync.util.Constants
 
 /**
  * Main app composable with navigation
@@ -30,7 +33,10 @@ import com.stepsync.presentation.social.SocialViewModel
 fun StepSyncApp(
     navController: NavHostController = rememberNavController()
 ) {
-    val startDestination = Screen.Login.route // In a real app, check if user is logged in
+    val context = LocalContext.current
+    val prefs = context.getSharedPreferences("stepsync_prefs", Context.MODE_PRIVATE)
+    val isLoggedIn = prefs.getBoolean(Constants.KEY_IS_LOGGED_IN, false)
+    val startDestination = if (isLoggedIn) Screen.Home.route else Screen.Login.route // In a real app, check if user is logged in
     
     NavHost(
         navController = navController,
