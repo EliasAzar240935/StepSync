@@ -3,13 +3,17 @@ package com.stepsync.presentation.auth
 import android.content.SharedPreferences
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.auth.FirebaseUser
 import com.stepsync.data.model.User
+import com.stepsync.domain.repository.AuthRepository
 import com.stepsync.domain.repository.UserRepository
 import com.stepsync.util.Constants
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -19,11 +23,25 @@ import javax.inject.Inject
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val userRepository: UserRepository,
+    private val authRepository: AuthRepository,
     private val sharedPreferences: SharedPreferences
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<AuthUiState>(AuthUiState.Idle)
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
+
+    /**
+     * Observable authentication state - emits the current Firebase user or null
+     */
+    val authState: StateFlow<FirebaseUser?> = authRepository.observeAuthState()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), authRepository.getCurrentUser())
+
+    /**
+     * Check if user is currently authenticated
+     */
+    fun isUserAuthenticated(): Boolean {
+        return authRepository.isUserAuthenticated()
+    }
 
     fun login(email: String, password: String) {
         if (email.isBlank() || password.isBlank()) {
