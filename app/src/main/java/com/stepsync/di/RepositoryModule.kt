@@ -18,6 +18,12 @@ abstract class RepositoryModule {
 
     @Binds
     @Singleton
+    abstract fun bindAuthRepository(
+        firebaseAuthRepository: FirebaseAuthRepository
+    ): AuthRepository
+
+    @Binds
+    @Singleton
     abstract fun bindUserRepository(
         firebaseUserRepository: FirebaseUserRepository
     ): UserRepository

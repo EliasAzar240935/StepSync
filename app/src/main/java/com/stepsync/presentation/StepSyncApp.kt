@@ -22,21 +22,57 @@ import com.stepsync.presentation.profile.ProfileScreen
 import com.stepsync.presentation.profile.ProfileViewModel
 import com.stepsync.presentation.social.SocialScreen
 import com.stepsync.presentation.social.SocialViewModel
-import android.content.Context
-import androidx.compose.ui.platform.LocalContext
-import com.stepsync.util.Constants
+import androidx.compose.ui.Alignment
 
 /**
  * Main app composable with navigation
+ * Uses Firebase Auth state to determine the start destination
  */
 @Composable
 fun StepSyncApp(
     navController: NavHostController = rememberNavController()
 ) {
-    val context = LocalContext.current
-    val prefs = context.getSharedPreferences("stepsync_prefs", Context.MODE_PRIVATE)
-    val isLoggedIn = prefs.getBoolean(Constants.KEY_IS_LOGGED_IN, false)
-    val startDestination = if (isLoggedIn) Screen.Home.route else Screen.Login.route // In a real app, check if user is logged in
+    // Get AuthViewModel to check authentication state
+    val authViewModel: AuthViewModel = hiltViewModel()
+    val authState by authViewModel.authState.collectAsState()
+    
+    // Determine if user is authenticated based on Firebase Auth state
+    val isAuthenticated = authState != null
+    
+    // Show loading state while checking authentication
+    var isInitialized by remember { mutableStateOf(false) }
+    
+    LaunchedEffect(authState) {
+        // Mark as initialized once we get the first auth state
+        isInitialized = true
+    }
+    
+    if (!isInitialized) {
+        // Show loading while checking auth state
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+    
+    val startDestination = if (isAuthenticated) Screen.Home.route else Screen.Login.route
+    
+    // Handle navigation when auth state changes
+    LaunchedEffect(isAuthenticated) {
+        val currentRoute = navController.currentDestination?.route
+        if (isAuthenticated && currentRoute == Screen.Login.route) {
+            navController.navigate(Screen.Home.route) {
+                popUpTo(Screen.Login.route) { inclusive = true }
+            }
+        } else if (!isAuthenticated && currentRoute != Screen.Login.route && currentRoute != Screen.Register.route) {
+            navController.navigate(Screen.Login.route) {
+                popUpTo(0) { inclusive = true }
+            }
+        }
+    }
     
     NavHost(
         navController = navController,
