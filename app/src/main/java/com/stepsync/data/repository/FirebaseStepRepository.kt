@@ -1,14 +1,14 @@
-package com.stepsync.data.repository
+package com.stepsync.data. repository
 
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase. firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
-import com.stepsync.data.model.StepRecord
+import com.stepsync. data.model.StepRecord
 import com.stepsync.domain.repository.StepRecordRepository
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.tasks. await
 import javax.inject.Inject
 
 /**
@@ -21,9 +21,9 @@ class FirebaseStepRepository @Inject constructor(
 
     private val stepRecordsCollection = firestore.collection("stepRecords")
 
-    override suspend fun getStepRecordByDate(userId: Long, date: String): StepRecord? {
+    override suspend fun getStepRecordByDate(userId: String, date: String): StepRecord? {
         val currentUser = auth.currentUser ?: return null
-        
+
         return try {
             val querySnapshot = stepRecordsCollection
                 .whereEqualTo("userId", currentUser.uid)
@@ -31,12 +31,12 @@ class FirebaseStepRepository @Inject constructor(
                 .limit(1)
                 .get()
                 .await()
-            
-            if (!querySnapshot.isEmpty) {
+
+            if (! querySnapshot.isEmpty) {
                 val document = querySnapshot.documents[0]
                 document.toObject(StepRecord::class.java)?.copy(
-                    id = document.id.hashCode().toLong(),
-                    userId = userId
+                    id = document. id. hashCode().toLong(),
+                    userId = currentUser. uid
                 )
             } else {
                 null
@@ -46,14 +46,14 @@ class FirebaseStepRepository @Inject constructor(
         }
     }
 
-    override fun getAllStepRecords(userId: Long): Flow<List<StepRecord>> = callbackFlow {
+    override fun getAllStepRecords(userId: String): Flow<List<StepRecord>> = callbackFlow {
         val currentUser = auth.currentUser
         if (currentUser == null) {
             trySend(emptyList())
             awaitClose { }
             return@callbackFlow
         }
-        
+
         val registration = stepRecordsCollection
             .whereEqualTo("userId", currentUser.uid)
             .orderBy("date", Query.Direction.DESCENDING)
@@ -62,22 +62,22 @@ class FirebaseStepRepository @Inject constructor(
                     trySend(emptyList())
                     return@addSnapshotListener
                 }
-                
+
                 val records = snapshot?.documents?.mapNotNull { document ->
-                    document.toObject(StepRecord::class.java)?.copy(
+                    document. toObject(StepRecord::class.java)?.copy(
                         id = document.id.hashCode().toLong(),
-                        userId = userId
+                        userId = currentUser.uid
                     )
                 } ?: emptyList()
-                
+
                 trySend(records)
             }
-        
+
         awaitClose { registration.remove() }
     }
 
     override fun getStepRecordsBetweenDates(
-        userId: Long,
+        userId: String,
         startDate: String,
         endDate: String
     ): Flow<List<StepRecord>> = callbackFlow {
@@ -87,77 +87,77 @@ class FirebaseStepRepository @Inject constructor(
             awaitClose { }
             return@callbackFlow
         }
-        
+
         val registration = stepRecordsCollection
             .whereEqualTo("userId", currentUser.uid)
-            .whereGreaterThanOrEqualTo("date", startDate)
+            . whereGreaterThanOrEqualTo("date", startDate)
             .whereLessThanOrEqualTo("date", endDate)
-            .orderBy("date", Query.Direction.DESCENDING)
+            .orderBy("date", Query.Direction. DESCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     trySend(emptyList())
                     return@addSnapshotListener
                 }
-                
+
                 val records = snapshot?.documents?.mapNotNull { document ->
-                    document.toObject(StepRecord::class.java)?.copy(
+                    document. toObject(StepRecord::class.java)?.copy(
                         id = document.id.hashCode().toLong(),
-                        userId = userId
+                        userId = currentUser.uid
                     )
                 } ?: emptyList()
-                
+
                 trySend(records)
             }
-        
+
         awaitClose { registration.remove() }
     }
 
-    override fun getRecentStepRecords(userId: Long, limit: Int): Flow<List<StepRecord>> = callbackFlow {
+    override fun getRecentStepRecords(userId: String, limit: Int): Flow<List<StepRecord>> = callbackFlow {
         val currentUser = auth.currentUser
         if (currentUser == null) {
             trySend(emptyList())
             awaitClose { }
             return@callbackFlow
         }
-        
+
         val registration = stepRecordsCollection
             .whereEqualTo("userId", currentUser.uid)
-            .orderBy("date", Query.Direction.DESCENDING)
-            .limit(limit.toLong())
+            .orderBy("date", Query.Direction. DESCENDING)
+            .limit(limit. toLong())
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     trySend(emptyList())
                     return@addSnapshotListener
                 }
-                
+
                 val records = snapshot?.documents?.mapNotNull { document ->
                     document.toObject(StepRecord::class.java)?.copy(
-                        id = document.id.hashCode().toLong(),
-                        userId = userId
+                        id = document.id.hashCode(). toLong(),
+                        userId = currentUser.uid
                     )
                 } ?: emptyList()
-                
+
                 trySend(records)
             }
-        
-        awaitClose { registration.remove() }
+
+        awaitClose { registration. remove() }
     }
 
     override suspend fun getTotalStepsBetweenDates(
-        userId: Long,
+        userId: String,
         startDate: String,
         endDate: String
     ): Int {
-        val currentUser = auth.currentUser ?: return 0
-        
+        val currentUser = auth. currentUser ?: return 0
+
         return try {
             val querySnapshot = stepRecordsCollection
                 .whereEqualTo("userId", currentUser.uid)
-                .whereGreaterThanOrEqualTo("date", startDate)
+                . whereGreaterThanOrEqualTo("date", startDate)
                 .whereLessThanOrEqualTo("date", endDate)
                 .get()
                 .await()
-            
+
             querySnapshot.documents.sumOf { document ->
                 document.getLong("steps")?.toInt() ?: 0
             }
@@ -167,48 +167,45 @@ class FirebaseStepRepository @Inject constructor(
     }
 
     override suspend fun insertOrUpdateStepRecord(
-        userId: Long,
+        userId: String,
         date: String,
         steps: Int,
         distance: Float,
         calories: Float
     ) {
         val currentUser = auth.currentUser ?: throw Exception("No authenticated user")
-        
+
         try {
-            // Check if record exists for this date
             val existingQuery = stepRecordsCollection
                 .whereEqualTo("userId", currentUser.uid)
-                .whereEqualTo("date", date)
+                . whereEqualTo("date", date)
                 .limit(1)
                 .get()
-                .await()
-            
+                . await()
+
             val recordData = hashMapOf(
                 "userId" to currentUser.uid,
                 "date" to date,
                 "steps" to steps,
                 "distance" to distance,
                 "calories" to calories,
-                "timestamp" to System.currentTimeMillis()
+                "timestamp" to System. currentTimeMillis()
             )
-            
-            if (!existingQuery.isEmpty) {
-                // Update existing record
+
+            if (! existingQuery.isEmpty) {
                 val documentId = existingQuery.documents[0].id
-                stepRecordsCollection.document(documentId).update(recordData as Map<String, Any>).await()
+                stepRecordsCollection.document(documentId).update(recordData as Map<String, Any>). await()
             } else {
-                // Create new record
                 stepRecordsCollection.add(recordData).await()
             }
         } catch (e: Exception) {
-            throw Exception("Failed to save step record: ${e.message}")
+            throw Exception("Failed to save step record: ${e. message}")
         }
     }
 
-    override suspend fun updateSteps(userId: Long, date: String, steps: Int) {
+    override suspend fun updateSteps(userId: String, date: String, steps: Int) {
         val currentUser = auth.currentUser ?: throw Exception("No authenticated user")
-        
+
         try {
             val querySnapshot = stepRecordsCollection
                 .whereEqualTo("userId", currentUser.uid)
@@ -216,7 +213,7 @@ class FirebaseStepRepository @Inject constructor(
                 .limit(1)
                 .get()
                 .await()
-            
+
             if (!querySnapshot.isEmpty) {
                 val documentId = querySnapshot.documents[0].id
                 stepRecordsCollection.document(documentId)
@@ -229,7 +226,38 @@ class FirebaseStepRepository @Inject constructor(
                     .await()
             }
         } catch (e: Exception) {
-            throw Exception("Failed to update steps: ${e.message}")
+            throw Exception("Failed to update steps: ${e. message}")
         }
+    }
+
+    override fun observeStepRecordByDate(userId: String, date: String): Flow<StepRecord?> = callbackFlow {
+        val currentUser = auth.currentUser
+        if (currentUser == null) {
+            trySend(null)
+            awaitClose { }
+            return@callbackFlow
+        }
+
+        val registration = stepRecordsCollection
+            .whereEqualTo("userId", currentUser.uid)
+            . whereEqualTo("date", date)
+            .limit(1)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(null)
+                    return@addSnapshotListener
+                }
+
+                val record = snapshot?.documents?. firstOrNull()?. let { document ->
+                    document.toObject(StepRecord::class. java)?.copy(
+                        id = document.id.hashCode().toLong(),
+                        userId = currentUser.uid
+                    )
+                }
+
+                trySend(record)
+            }
+
+        awaitClose { registration.remove() }
     }
 }

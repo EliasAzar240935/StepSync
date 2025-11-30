@@ -6,7 +6,7 @@ package com.stepsync.data.model
  */
 data class StepRecord(
     val id: Long = 0,
-    val userId: Long = 0,
+    val userId: String = "",
     val date: String = "",
     val steps: Int = 0,
     val distance: Float = 0f,

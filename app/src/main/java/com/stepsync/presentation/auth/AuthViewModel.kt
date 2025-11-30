@@ -140,7 +140,7 @@ class AuthViewModel @Inject constructor(
 
     private fun saveUserSession(user: User) {
         sharedPreferences.edit().apply {
-            putLong(Constants.KEY_USER_ID, user.id)
+            putString(Constants.KEY_USER_ID, user.id)
             putBoolean(Constants.KEY_IS_LOGGED_IN, true)
             apply()
         }

@@ -5,7 +5,7 @@ package com.stepsync.data.model
  * All properties must have default values for Firebase Firestore deserialization
  */
 data class User(
-    val id: Long = 0,
+    val id: String = "",
     val email: String = "",
     val name: String = "",
     val age: Int = 0,

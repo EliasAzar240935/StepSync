@@ -6,7 +6,7 @@ package com.stepsync.data.model
  */
 data class Activity(
     val id: Long = 0,
-    val userId: Long = 0,
+    val userId: String = "",
     val activityType: String = "",
     val startTime: Long = 0,
     val endTime: Long = 0,

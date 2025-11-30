@@ -6,7 +6,7 @@ package com.stepsync.data.model
  */
 data class Goal(
     val id: Long = 0,
-    val userId: Long = 0,
+    val userId: String = "",
     val goalType: String = "",
     val targetValue: Int = 0,
     val currentValue: Int = 0,

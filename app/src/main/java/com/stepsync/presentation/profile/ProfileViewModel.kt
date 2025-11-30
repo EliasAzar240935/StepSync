@@ -1,15 +1,15 @@
-package com.stepsync.presentation.profile
+package com.stepsync.presentation. profile
 
 import android.content.SharedPreferences
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
+import androidx.lifecycle. ViewModel
+import androidx.lifecycle. viewModelScope
 import com.stepsync.data.model.User
-import com.stepsync.domain.repository.AchievementRepository
-import com.stepsync.domain.repository.UserRepository
+import com.stepsync. domain.repository.AchievementRepository
+import com. stepsync.domain.repository. UserRepository
 import com.stepsync.util.Constants
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx. coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -51,15 +51,19 @@ class ProfileViewModel @Inject constructor(
 
     fun updateProfile(user: User) {
         viewModelScope.launch {
-            userRepository.updateUser(user)
+            userRepository. updateUser(user)
         }
     }
 
     fun logout() {
-        sharedPreferences.edit().apply {
-            putBoolean(Constants.KEY_IS_LOGGED_IN, false)
-            remove(Constants.KEY_USER_ID)
-            apply()
+        viewModelScope.launch {
+            // Sign out from Firebase Auth
+            userRepository.logout()
+            // Clear local session
+            sharedPreferences.edit().apply {
+                clear()
+                apply()
+            }
         }
     }
 }
