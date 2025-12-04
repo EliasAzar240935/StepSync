@@ -1,4 +1,4 @@
-package com.stepsync.domain. repository
+package com. stepsync.domain.repository
 
 import com.stepsync.data.model.Activity
 import kotlinx.coroutines.flow.Flow
@@ -12,4 +12,7 @@ interface ActivityRepository {
     fun getRecentActivities(userId: String, limit: Int): Flow<List<Activity>>
     suspend fun getTotalCaloriesBetweenTimes(userId: String, startTime: Long, endTime: Long): Float
     suspend fun getTotalDistanceBetweenTimes(userId: String, startTime: Long, endTime: Long): Float
+    suspend fun insertActivity(activity: Activity): Long
+    suspend fun updateActivity(activity: Activity)
+    suspend fun deleteActivity(activityId: Long)
 }

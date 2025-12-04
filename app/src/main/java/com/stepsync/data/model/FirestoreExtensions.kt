@@ -1,4 +1,4 @@
-package com.stepsync.data. model
+package com.stepsync.data.model
 
 import com.google.firebase.firestore.DocumentSnapshot
 
@@ -9,10 +9,10 @@ import com.google.firebase.firestore.DocumentSnapshot
 /**
  * Convert Firestore DocumentSnapshot to User data model
  */
-fun DocumentSnapshot.toUser(userId: String): User? {  // Changed Long to String
+fun DocumentSnapshot. toUser(userId: String): User?  {
     return try {
         User(
-            id = userId,  // Now expects String
+            id = userId,
             email = getString("email") ?: return null,
             name = getString("name") ?: return null,
             age = getLong("age")?.toInt() ?: return null,
@@ -93,7 +93,7 @@ fun Goal.toFirestoreMap(firebaseUid: String): Map<String, Any> {
 /**
  * Convert Achievement data model to Firestore map
  */
-fun Achievement. toFirestoreMap(firebaseUid: String): Map<String, Any> {
+fun Achievement.toFirestoreMap(firebaseUid: String): Map<String, Any> {
     return hashMapOf(
         "userId" to firebaseUid,
         "achievementType" to achievementType,

@@ -1,4 +1,4 @@
-package com.stepsync. domain.repository
+package com.stepsync.domain. repository
 
 import com.stepsync.data.model.StepRecord
 import kotlinx.coroutines.flow.Flow
@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.Flow
  */
 interface StepRecordRepository {
     suspend fun getStepRecordByDate(userId: String, date: String): StepRecord?
-    fun observeStepRecordByDate(userId: String, date: String): Flow<StepRecord?>  // ADD THIS
+    fun observeStepRecordByDate(userId: String, date: String): Flow<StepRecord?>
     fun getAllStepRecords(userId: String): Flow<List<StepRecord>>
     fun getStepRecordsBetweenDates(userId: String, startDate: String, endDate: String): Flow<List<StepRecord>>
     fun getRecentStepRecords(userId: String, limit: Int): Flow<List<StepRecord>>

@@ -4,18 +4,18 @@ import android.content.SharedPreferences
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseUser
-import com.stepsync.data.model.User
+import com.stepsync. data.model.User
 import com.stepsync.domain.repository.AuthRepository
 import com.stepsync.domain.repository.UserRepository
 import com.stepsync.util.Constants
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
+import dagger.hilt. android.lifecycle.HiltViewModel
+import kotlinx.coroutines. flow. MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines. flow.stateIn
 import kotlinx.coroutines.launch
-import javax.inject.Inject
+import javax. inject.Inject
 
 /**
  * ViewModel for authentication (login and registration)
@@ -27,7 +27,7 @@ class AuthViewModel @Inject constructor(
     private val sharedPreferences: SharedPreferences
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow<AuthUiState>(AuthUiState.Idle)
+    private val _uiState = MutableStateFlow<AuthUiState>(AuthUiState. Idle)
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
     /**
@@ -44,7 +44,7 @@ class AuthViewModel @Inject constructor(
     }
 
     fun login(email: String, password: String) {
-        if (email.isBlank() || password.isBlank()) {
+        if (email.isBlank() || password. isBlank()) {
             _uiState.value = AuthUiState.Error("Email and password are required")
             return
         }
@@ -81,11 +81,11 @@ class AuthViewModel @Inject constructor(
                 _uiState.value = AuthUiState.Error("Email is required")
                 return
             }
-            password.isBlank() -> {
+            password. isBlank() -> {
                 _uiState.value = AuthUiState.Error("Password is required")
                 return
             }
-            password.length < 6 -> {
+            password. length < 6 -> {
                 _uiState.value = AuthUiState.Error("Password must be at least 6 characters")
                 return
             }
@@ -98,11 +98,11 @@ class AuthViewModel @Inject constructor(
                 return
             }
             age <= 0 -> {
-                _uiState.value = AuthUiState.Error("Valid age is required")
+                _uiState.value = AuthUiState. Error("Valid age is required")
                 return
             }
             weight <= 0 -> {
-                _uiState.value = AuthUiState.Error("Valid weight is required")
+                _uiState.value = AuthUiState. Error("Valid weight is required")
                 return
             }
             height <= 0 -> {
@@ -128,9 +128,9 @@ class AuthViewModel @Inject constructor(
                 val user = userRepository.authenticateUser(email, password)
                 if (user != null) {
                     saveUserSession(user)
-                    _uiState.value = AuthUiState.Success(user)
+                    _uiState.value = AuthUiState. Success(user)
                 } else {
-                    _uiState.value = AuthUiState.Error("Registration completed but login failed. Please try logging in.")
+                    _uiState.value = AuthUiState. Error("Registration completed but login failed.  Please try logging in.")
                 }
             } catch (e: Exception) {
                 _uiState.value = AuthUiState.Error(e.message ?: "Registration failed")
@@ -157,13 +157,13 @@ class AuthViewModel @Inject constructor(
                 }
                 _uiState.value = AuthUiState.Idle
             } catch (e: Exception) {
-                _uiState.value = AuthUiState.Error("Logout failed: ${e.message}")
+                _uiState.value = AuthUiState. Error("Logout failed: ${e.message}")
             }
         }
     }
 
     fun resetState() {
-        _uiState.value = AuthUiState.Idle
+        _uiState.value = AuthUiState. Idle
     }
 }
 

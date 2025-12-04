@@ -195,19 +195,20 @@ fun FriendRequestItem(request: Friend, viewModel: SocialViewModel) {
             Column {
                 Text(
                     text = request.friendName,
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme. typography.titleMedium
                 )
                 Text(
                     text = request.friendEmail,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme. typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             Button(
-                onClick = { viewModel.acceptFriendRequest(request.friendUserId) }
+                onClick = { viewModel.acceptFriendRequest(request.id) }  // ← Changed from request.friendUserId to request.id
             ) {
                 Text("Accept")
             }
         }
     }
 }
+

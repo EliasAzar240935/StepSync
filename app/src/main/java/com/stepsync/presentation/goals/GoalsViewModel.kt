@@ -3,13 +3,13 @@ package com.stepsync.presentation.goals
 import android.content.SharedPreferences
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.stepsync.data.model.Goal
+import com.stepsync. data.model.Goal
 import com.stepsync.domain.repository.GoalRepository
-import com.stepsync.util.Constants
+import com. stepsync.util.Constants
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
+import kotlinx. coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -19,7 +19,7 @@ class GoalsViewModel @Inject constructor(
     private val sharedPreferences: SharedPreferences
 ) : ViewModel() {
 
-    private val userId = sharedPreferences.getLong(Constants.KEY_USER_ID, 0L)
+    private val userId = sharedPreferences.getString(Constants.KEY_USER_ID, "") ?: ""
 
     val activeGoals: StateFlow<List<Goal>> = goalRepository
         .getActiveGoals(userId)
@@ -36,7 +36,7 @@ class GoalsViewModel @Inject constructor(
     }
 
     fun deleteGoal(goalId: Long) {
-        viewModelScope.launch {
+        viewModelScope. launch {
             goalRepository.deleteGoal(goalId)
         }
     }

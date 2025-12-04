@@ -1,4 +1,4 @@
-package com.stepsync.data.model
+package com.stepsync.data. model
 
 /**
  * Data model for Achievement
@@ -6,7 +6,7 @@ package com.stepsync.data.model
  */
 data class Achievement(
     val id: Long = 0,
-    val userId: Long = 0,
+    val userId: String = "",  // Changed from Long to String
     val achievementType: String = "",
     val title: String = "",
     val description: String = "",

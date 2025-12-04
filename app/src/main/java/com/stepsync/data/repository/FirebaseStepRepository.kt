@@ -1,4 +1,4 @@
-package com.stepsync.data. repository
+package com.stepsync.data.repository
 
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase. firestore.FirebaseFirestore
@@ -6,7 +6,7 @@ import com.google.firebase.firestore.Query
 import com.stepsync. data.model.StepRecord
 import com.stepsync.domain.repository.StepRecordRepository
 import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow. Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks. await
 import javax.inject.Inject
@@ -34,9 +34,9 @@ class FirebaseStepRepository @Inject constructor(
 
             if (! querySnapshot.isEmpty) {
                 val document = querySnapshot.documents[0]
-                document.toObject(StepRecord::class.java)?.copy(
+                document.toObject(StepRecord::class.java)?. copy(
                     id = document. id. hashCode().toLong(),
-                    userId = currentUser. uid
+                    userId = currentUser.uid
                 )
             } else {
                 null
@@ -44,6 +44,37 @@ class FirebaseStepRepository @Inject constructor(
         } catch (e: Exception) {
             null
         }
+    }
+
+    override fun observeStepRecordByDate(userId: String, date: String): Flow<StepRecord?> = callbackFlow {
+        val currentUser = auth.currentUser
+        if (currentUser == null) {
+            trySend(null)
+            awaitClose { }
+            return@callbackFlow
+        }
+
+        val registration = stepRecordsCollection
+            .whereEqualTo("userId", currentUser.uid)
+            .whereEqualTo("date", date)
+            .limit(1)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(null)
+                    return@addSnapshotListener
+                }
+
+                val record = snapshot?.documents?.firstOrNull()?. let { document ->
+                    document. toObject(StepRecord::class.java)?.copy(
+                        id = document.id.hashCode().toLong(),
+                        userId = currentUser.uid
+                    )
+                }
+
+                trySend(record)
+            }
+
+        awaitClose { registration.remove() }
     }
 
     override fun getAllStepRecords(userId: String): Flow<List<StepRecord>> = callbackFlow {
@@ -55,8 +86,8 @@ class FirebaseStepRepository @Inject constructor(
         }
 
         val registration = stepRecordsCollection
-            .whereEqualTo("userId", currentUser.uid)
-            .orderBy("date", Query.Direction.DESCENDING)
+            . whereEqualTo("userId", currentUser.uid)
+            .orderBy("date", Query.Direction. DESCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     trySend(emptyList())
@@ -92,7 +123,7 @@ class FirebaseStepRepository @Inject constructor(
             .whereEqualTo("userId", currentUser.uid)
             . whereGreaterThanOrEqualTo("date", startDate)
             .whereLessThanOrEqualTo("date", endDate)
-            .orderBy("date", Query.Direction. DESCENDING)
+            .orderBy("date", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     trySend(emptyList())
@@ -131,8 +162,8 @@ class FirebaseStepRepository @Inject constructor(
                 }
 
                 val records = snapshot?.documents?.mapNotNull { document ->
-                    document.toObject(StepRecord::class.java)?.copy(
-                        id = document.id.hashCode(). toLong(),
+                    document.toObject(StepRecord::class. java)?.copy(
+                        id = document.id.hashCode().toLong(),
                         userId = currentUser.uid
                     )
                 } ?: emptyList()
@@ -140,7 +171,7 @@ class FirebaseStepRepository @Inject constructor(
                 trySend(records)
             }
 
-        awaitClose { registration. remove() }
+        awaitClose { registration.remove() }
     }
 
     override suspend fun getTotalStepsBetweenDates(
@@ -153,7 +184,7 @@ class FirebaseStepRepository @Inject constructor(
         return try {
             val querySnapshot = stepRecordsCollection
                 .whereEqualTo("userId", currentUser.uid)
-                . whereGreaterThanOrEqualTo("date", startDate)
+                .whereGreaterThanOrEqualTo("date", startDate)
                 .whereLessThanOrEqualTo("date", endDate)
                 .get()
                 .await()
@@ -199,7 +230,7 @@ class FirebaseStepRepository @Inject constructor(
                 stepRecordsCollection.add(recordData).await()
             }
         } catch (e: Exception) {
-            throw Exception("Failed to save step record: ${e. message}")
+            throw Exception("Failed to save step record: ${e.message}")
         }
     }
 
@@ -228,36 +259,5 @@ class FirebaseStepRepository @Inject constructor(
         } catch (e: Exception) {
             throw Exception("Failed to update steps: ${e. message}")
         }
-    }
-
-    override fun observeStepRecordByDate(userId: String, date: String): Flow<StepRecord?> = callbackFlow {
-        val currentUser = auth.currentUser
-        if (currentUser == null) {
-            trySend(null)
-            awaitClose { }
-            return@callbackFlow
-        }
-
-        val registration = stepRecordsCollection
-            .whereEqualTo("userId", currentUser.uid)
-            . whereEqualTo("date", date)
-            .limit(1)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    trySend(null)
-                    return@addSnapshotListener
-                }
-
-                val record = snapshot?.documents?. firstOrNull()?. let { document ->
-                    document.toObject(StepRecord::class. java)?.copy(
-                        id = document.id.hashCode().toLong(),
-                        userId = currentUser.uid
-                    )
-                }
-
-                trySend(record)
-            }
-
-        awaitClose { registration.remove() }
     }
 }

@@ -6,8 +6,8 @@ package com.stepsync.data.model
  */
 data class Friend(
     val id: Long = 0,
-    val userId: Long = 0,
-    val friendUserId: Long = 0,
+    val userId: String = "",       // Changed from Long to String
+    val friendUserId: String = "", // Changed from Long to String
     val friendName: String = "",
     val friendEmail: String = "",
     val status: String = "",

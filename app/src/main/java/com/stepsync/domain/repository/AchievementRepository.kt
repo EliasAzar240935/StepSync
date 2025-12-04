@@ -7,8 +7,8 @@ import kotlinx.coroutines.flow.Flow
  * Repository interface for Achievement operations (Domain layer)
  */
 interface AchievementRepository {
-    fun getAllAchievements(userId: Long): Flow<List<Achievement>>
-    suspend fun unlockAchievement(userId: Long, achievementType: String, title: String, description: String): Long
-    suspend fun getAchievementsCount(userId: Long): Int
-    suspend fun checkAndUnlockAchievements(userId: Long, totalSteps: Int, consecutiveDays: Int)
+    fun getAllAchievements(userId: String): Flow<List<Achievement>>
+    suspend fun unlockAchievement(userId: String, achievementType: String, title: String, description: String)
+    suspend fun getAchievementsCount(userId: String): Int
+    suspend fun checkAndUnlockAchievements(userId: String, totalSteps: Int, consecutiveDays: Int)
 }

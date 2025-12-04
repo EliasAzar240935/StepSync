@@ -10,14 +10,14 @@ import android.hardware.SensorEvent
 import android.hardware. SensorEventListener
 import android. hardware.SensorManager
 import android.os.Build
-import android.os.IBinder
-import androidx.core.app.NotificationCompat
-import com.stepsync.MainActivity
+import android. os.IBinder
+import androidx. core.app.NotificationCompat
+import com.stepsync. MainActivity
 import com.stepsync. R
 import com.stepsync.domain.repository.StepRecordRepository
-import com.stepsync.util. CalculationUtils
-import com.stepsync.util.Constants
-import com.stepsync. util.DateUtils
+import com.stepsync.util.CalculationUtils
+import com.stepsync. util.Constants
+import com.stepsync.util.DateUtils
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import javax.inject.Inject
@@ -39,16 +39,23 @@ class StepCounterService : Service(), SensorEventListener {
 
     // Step tracking variables
     private var initialStepCount = -1
-    private var currentSteps = 0
     private var dailySteps = 0
 
     // Track the current date to detect day changes
     private var currentDate: String = ""
 
-    // Store the step count at the start of the day
-    private var stepsAtStartOfDay = 0
+    // Store the sensor value at the start of today's tracking session
+    private var sensorValueAtSessionStart = -1
+
+    // Steps that were already recorded before this session started
+    private var stepsBeforeSession = 0
 
     private val serviceScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+
+    companion object {
+        private const val PREF_SENSOR_VALUE_AT_DAY_START = "sensor_value_at_day_start_"
+        private const val PREF_LAST_KNOWN_DATE = "last_known_date"
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -69,18 +76,18 @@ class StepCounterService : Service(), SensorEventListener {
         createNotificationChannel()
         val notification = createNotification()
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES. Q) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(
-                Constants.NOTIFICATION_ID,
+                Constants. NOTIFICATION_ID,
                 notification,
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_HEALTH
             )
         } else {
-            startForeground(Constants.NOTIFICATION_ID, notification)
+            startForeground(Constants. NOTIFICATION_ID, notification)
         }
 
-        stepSensor?.let {
-            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI)
+        stepSensor?. let {
+            sensorManager. registerListener(this, it, SensorManager.SENSOR_DELAY_UI)
         }
 
         // Load today's steps from database
@@ -105,20 +112,33 @@ class StepCounterService : Service(), SensorEventListener {
                 // Check if the date has changed (new day)
                 val newDate = DateUtils.getCurrentDate()
                 if (newDate != currentDate) {
-                    // New day started!  Reset for the new day
                     handleDayChange(newDate, totalStepsFromSensor)
                 }
 
-                // Initialize on first sensor reading
-                if (initialStepCount == -1) {
-                    initialStepCount = totalStepsFromSensor
-                    stepsAtStartOfDay = totalStepsFromSensor
+                // Initialize on first sensor reading of this session
+                if (sensorValueAtSessionStart == -1) {
+                    sensorValueAtSessionStart = totalStepsFromSensor
+
+                    // Check if we have a stored sensor value for today
+                    val storedSensorValue = getSensorValueAtDayStart()
+                    if (storedSensorValue == -1) {
+                        // First time tracking today - save current sensor value as day start
+                        saveSensorValueAtDayStart(totalStepsFromSensor)
+                        initialStepCount = totalStepsFromSensor
+                    } else {
+                        // Resuming tracking - use the stored day start value
+                        initialStepCount = storedSensorValue
+                    }
                 }
 
-                // Calculate steps for today
-                // Steps today = (current sensor value - sensor value at start of day) + steps already saved today
-                currentSteps = totalStepsFromSensor - stepsAtStartOfDay
-                dailySteps = currentSteps + getStoredStepsForToday()
+                // Calculate today's steps: current sensor value - sensor value at start of day
+                dailySteps = totalStepsFromSensor - initialStepCount
+
+                // Ensure we don't have negative steps
+                if (dailySteps < 0) {
+                    // Device was rebooted, sensor reset - use session-based counting
+                    dailySteps = (totalStepsFromSensor - sensorValueAtSessionStart) + stepsBeforeSession
+                }
 
                 // Save to database
                 saveSteps()
@@ -134,38 +154,49 @@ class StepCounterService : Service(), SensorEventListener {
      */
     private fun handleDayChange(newDate: String, currentSensorValue: Int) {
         // Save the current sensor value as the start of the new day
-        stepsAtStartOfDay = currentSensorValue
+        initialStepCount = currentSensorValue
+        sensorValueAtSessionStart = currentSensorValue
 
         // Reset counters for the new day
-        currentSteps = 0
         dailySteps = 0
+        stepsBeforeSession = 0
 
         // Update the current date
         currentDate = newDate
 
-        // Clear the stored steps since it's a new day
-        clearStoredStepsForToday()
+        // Save the new day's start sensor value
+        saveSensorValueAtDayStart(currentSensorValue)
+        saveLastKnownDate(newDate)
     }
 
     /**
-     * Get steps already stored for today (from previous app sessions)
+     * Get the sensor value at the start of today
      */
-    private fun getStoredStepsForToday(): Int {
-        return sharedPreferences.getInt("stored_steps_$currentDate", 0)
+    private fun getSensorValueAtDayStart(): Int {
+        val lastKnownDate = sharedPreferences.getString(PREF_LAST_KNOWN_DATE, "") ?: ""
+        return if (lastKnownDate == currentDate) {
+            sharedPreferences.getInt(PREF_SENSOR_VALUE_AT_DAY_START + currentDate, -1)
+        } else {
+            -1 // Different day, no valid stored value
+        }
     }
 
     /**
-     * Save current steps locally for recovery
+     * Save the sensor value at the start of today
      */
-    private fun saveStoredStepsForToday(steps: Int) {
-        sharedPreferences.edit(). putInt("stored_steps_$currentDate", steps).apply()
+    private fun saveSensorValueAtDayStart(value: Int) {
+        sharedPreferences.edit()
+            .putInt(PREF_SENSOR_VALUE_AT_DAY_START + currentDate, value)
+            .apply()
     }
 
     /**
-     * Clear stored steps (called on new day)
+     * Save the last known date
      */
-    private fun clearStoredStepsForToday() {
-        sharedPreferences.edit().remove("stored_steps_$currentDate").apply()
+    private fun saveLastKnownDate(date: String) {
+        sharedPreferences. edit()
+            .putString(PREF_LAST_KNOWN_DATE, date)
+            .apply()
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
@@ -173,29 +204,31 @@ class StepCounterService : Service(), SensorEventListener {
     }
 
     private fun loadTodaySteps() {
-        val userId = sharedPreferences.getLong(Constants.KEY_USER_ID, 0L)
+        val userId = sharedPreferences. getString(Constants.KEY_USER_ID, "") ?: ""
         currentDate = DateUtils.getCurrentDate()
 
-        serviceScope.launch {
-            val record = stepRecordRepository.getStepRecordByDate(userId, currentDate)
-            val storedSteps = record?.steps ?: 0
-            dailySteps = storedSteps
+        if (userId.isNotEmpty()) {
+            serviceScope.launch {
+                val record = stepRecordRepository.getStepRecordByDate(userId, currentDate)
+                stepsBeforeSession = record?.steps ?: 0
+                dailySteps = stepsBeforeSession
 
-            // Save to local storage for recovery
-            saveStoredStepsForToday(storedSteps)
+                // Update notification with loaded steps
+                updateNotification()
+            }
         }
     }
 
     private fun saveSteps() {
-        val userId = sharedPreferences.getLong(Constants.KEY_USER_ID, 0L)
-        if (userId > 0) {
+        val userId = sharedPreferences.getString(Constants.KEY_USER_ID, "") ?: ""
+        if (userId.isNotEmpty()) {
             serviceScope.launch {
                 val today = DateUtils.getCurrentDate()
                 // Get user weight and height for calculations (using defaults for now)
                 val weight = 70f
                 val height = 170f
 
-                val distance = CalculationUtils.calculateDistance(dailySteps)
+                val distance = CalculationUtils. calculateDistance(dailySteps)
                 val calories = CalculationUtils.calculateCaloriesFromSteps(dailySteps, weight, height)
 
                 stepRecordRepository.insertOrUpdateStepRecord(
@@ -205,22 +238,23 @@ class StepCounterService : Service(), SensorEventListener {
                     distance = distance,
                     calories = calories
                 )
-
-                // Update local storage
-                saveStoredStepsForToday(dailySteps)
             }
         }
     }
 
     private fun startPeriodicUpdates() {
-        serviceScope.launch {
+        serviceScope. launch {
             while (isActive) {
                 // Check for date change
                 val newDate = DateUtils.getCurrentDate()
                 if (newDate != currentDate) {
-                    // Trigger day change handling on next sensor event
-                    // Or force a reset if no sensor events are coming
-                    handleDayChange(newDate, initialStepCount + currentSteps)
+                    // Force day change even without sensor event
+                    val lastSensorValue = if (initialStepCount != -1) {
+                        initialStepCount + dailySteps
+                    } else {
+                        0
+                    }
+                    handleDayChange(newDate, lastSensorValue)
                     loadTodaySteps()
                 }
 
@@ -231,16 +265,16 @@ class StepCounterService : Service(), SensorEventListener {
     }
 
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES. O) {
             val channel = NotificationChannel(
-                Constants.NOTIFICATION_CHANNEL_ID,
-                getString(R.string.notification_channel_name),
+                Constants. NOTIFICATION_CHANNEL_ID,
+                getString(R.string. notification_channel_name),
                 NotificationManager.IMPORTANCE_LOW
             ). apply {
                 description = getString(R.string.notification_channel_description)
             }
             val notificationManager = getSystemService(NotificationManager::class.java)
-            notificationManager. createNotificationChannel(channel)
+            notificationManager.createNotificationChannel(channel)
         }
     }
 
@@ -254,9 +288,9 @@ class StepCounterService : Service(), SensorEventListener {
         )
 
         return NotificationCompat.Builder(this, Constants.NOTIFICATION_CHANNEL_ID)
-            . setContentTitle(getString(R. string.notification_title))
-            .setContentText(getString(R.string. notification_text, dailySteps))
-            .setSmallIcon(R.drawable. ic_launcher_foreground)
+            .setContentTitle(getString(R.string.notification_title))
+            .setContentText(getString(R.string.notification_text, dailySteps))
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
             .build()
@@ -268,7 +302,7 @@ class StepCounterService : Service(), SensorEventListener {
         notificationManager.notify(Constants.NOTIFICATION_ID, notification)
     }
 
-    override fun onBind(intent: Intent?): IBinder? = null
+    override fun onBind(intent: Intent?): IBinder?  = null
 
     override fun onDestroy() {
         super.onDestroy()

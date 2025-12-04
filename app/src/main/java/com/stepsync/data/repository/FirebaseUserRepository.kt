@@ -1,15 +1,15 @@
 package com.stepsync.data.repository
 
-import com.google.firebase.auth.FirebaseAuth
+import com. google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthException
 import com.google.firebase.auth.UserProfileChangeRequest
-import com.google.firebase.firestore.FirebaseFirestore
-import com.stepsync.data.model.User
+import com.google.firebase.firestore. FirebaseFirestore
+import com. stepsync.data.model. User
 import com.stepsync.domain.repository.UserRepository
-import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines. channels.awaitClose
+import kotlinx.coroutines.flow. Flow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines. tasks.await
 import javax.inject.Inject
 
 /**
@@ -22,21 +22,21 @@ class FirebaseUserRepository @Inject constructor(
 
     private val usersCollection = firestore.collection("users")
 
-    override fun getCurrentUser(): Flow<User?> = callbackFlow {
+    override fun getCurrentUser(): Flow<User? > = callbackFlow {
         val authStateListener = FirebaseAuth.AuthStateListener { firebaseAuth ->
             val firebaseUser = firebaseAuth.currentUser
             if (firebaseUser != null) {
                 // Listen to user document changes
                 val docRef = usersCollection.document(firebaseUser.uid)
-                docRef.addSnapshotListener { snapshot, error ->
+                docRef. addSnapshotListener { snapshot, error ->
                     if (error != null) {
                         trySend(null)
                         return@addSnapshotListener
                     }
 
                     if (snapshot != null && snapshot.exists()) {
-                        val user = snapshot.toObject(User::class.java)?.copy(
-                            id = firebaseUser.uid.hashCode().toLong()
+                        val user = snapshot.toObject(User::class. java)?.copy(
+                            id = firebaseUser.uid  // Changed: use uid directly as String
                         )
                         trySend(user)
                     } else {
@@ -60,13 +60,13 @@ class FirebaseUserRepository @Inject constructor(
             val querySnapshot = usersCollection
                 .whereEqualTo("email", email)
                 .limit(1)
-                .get()
+                . get()
                 .await()
-            
-            if (!querySnapshot.isEmpty) {
+
+            if (!querySnapshot. isEmpty) {
                 val document = querySnapshot.documents[0]
                 document.toObject(User::class.java)?.copy(
-                    id = document.id.hashCode().toLong()
+                    id = document.id  // Changed: use document id directly as String
                 )
             } else {
                 null
@@ -84,7 +84,7 @@ class FirebaseUserRepository @Inject constructor(
         weight: Float,
         height: Float,
         fitnessGoal: String
-    ): Long {
+    ): String {  // Changed return type from Long to String
         try {
             // Create Firebase Auth user
             val authResult = auth.createUserWithEmailAndPassword(email, password).await()
@@ -93,8 +93,8 @@ class FirebaseUserRepository @Inject constructor(
             // Update profile with name
             val profileUpdates = UserProfileChangeRequest.Builder()
                 .setDisplayName(name)
-                .build()
-            firebaseUser.updateProfile(profileUpdates).await()
+                . build()
+            firebaseUser. updateProfile(profileUpdates).await()
 
             // Create user document in Firestore
             val userDoc = hashMapOf(
@@ -109,9 +109,9 @@ class FirebaseUserRepository @Inject constructor(
                 "updatedAt" to System.currentTimeMillis()
             )
 
-            usersCollection.document(firebaseUser.uid).set(userDoc).await()
+            usersCollection.document(firebaseUser.uid).set(userDoc). await()
 
-            return firebaseUser.uid.hashCode().toLong()
+            return firebaseUser.uid  // Changed: return uid directly as String
         } catch (e: FirebaseAuthException) {
             // Handle specific Firebase Auth errors
             val errorMessage = when (e.errorCode) {
@@ -127,8 +127,8 @@ class FirebaseUserRepository @Inject constructor(
     }
 
     override suspend fun updateUser(user: User) {
-        val currentUser = auth.currentUser ?: throw Exception("No authenticated user")
-        
+        val currentUser = auth. currentUser ?: throw Exception("No authenticated user")
+
         try {
             val userDoc = hashMapOf(
                 "email" to user.email,
@@ -140,16 +140,16 @@ class FirebaseUserRepository @Inject constructor(
                 "dailyStepGoal" to user.dailyStepGoal,
                 "updatedAt" to System.currentTimeMillis()
             )
-            
-            usersCollection.document(currentUser.uid).update(userDoc as Map<String, Any>).await()
+
+            usersCollection.document(currentUser.uid).update(userDoc as Map<String, Any>). await()
         } catch (e: Exception) {
             throw Exception("Failed to update user: ${e.message}")
         }
     }
 
-    override suspend fun updateDailyStepGoal(userId: Long, goal: Int) {
+    override suspend fun updateDailyStepGoal(userId: String, goal: Int) {  // Changed: Long to String
         val currentUser = auth.currentUser ?: throw Exception("No authenticated user")
-        
+
         try {
             usersCollection.document(currentUser.uid)
                 .update(
@@ -167,15 +167,15 @@ class FirebaseUserRepository @Inject constructor(
     override suspend fun authenticateUser(email: String, password: String): User? {
         return try {
             // Sign in with Firebase Auth
-            val authResult = auth.signInWithEmailAndPassword(email, password).await()
+            val authResult = auth.signInWithEmailAndPassword(email, password). await()
             val firebaseUser = authResult.user ?: throw Exception("Authentication failed")
 
             // Get user document from Firestore
-            val document = usersCollection.document(firebaseUser.uid).get().await()
+            val document = usersCollection. document(firebaseUser.uid). get().await()
 
             if (document.exists()) {
-                document.toObject(User::class.java)?.copy(
-                    id = firebaseUser.uid.hashCode().toLong()
+                document.toObject(User::class. java)?.copy(
+                    id = firebaseUser.uid  // Changed: use uid directly as String
                 )
             } else {
                 throw Exception("User profile not found in database")
