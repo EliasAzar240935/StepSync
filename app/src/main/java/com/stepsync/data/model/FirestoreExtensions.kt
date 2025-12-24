@@ -76,18 +76,27 @@ fun Activity.toFirestoreMap(firebaseUid: String): Map<String, Any> {
 /**
  * Convert Goal data model to Firestore map
  */
+/**
+ * Convert Goal data model to Firestore map
+ */
+/**
+ * Convert Goal data model to Firestore map
+ */
 fun Goal.toFirestoreMap(firebaseUid: String): Map<String, Any> {
-    return hashMapOf(
+    return hashMapOf<String, Any>(
         "userId" to firebaseUid,
-        "goalType" to goalType,
-        "targetValue" to targetValue,
-        "currentValue" to currentValue,
-        "period" to period,
+        "title" to title,
+        "description" to description,
+        "targetSteps" to targetSteps,
+        "currentSteps" to currentSteps,
+        "goalType" to goalType.name,
         "startDate" to startDate,
         "endDate" to endDate,
         "isCompleted" to isCompleted,
-        "createdAt" to System.currentTimeMillis()
-    )
+        "createdAt" to createdAt
+    ).apply {
+        completedAt?.let { put("completedAt", it) }
+    }
 }
 
 /**

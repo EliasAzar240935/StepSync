@@ -1,89 +1,307 @@
-package com.stepsync.presentation.goals
+package com.stepsync.presentation. goals
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
+import androidx.compose.foundation. lazy.items
+import androidx.compose.material. icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material. icons.filled.CheckCircle
+import androidx.compose. material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
+import androidx.compose.ui. Alignment
+import androidx.compose. ui.Modifier
+import androidx. compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.stepsync.data.model.Goal
+import com.stepsync. data.model.GoalType
+import java.text.SimpleDateFormat
+import java. util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GoalsScreen(
-    viewModel: GoalsViewModel,
-    onNavigateBack: () -> Unit
+    viewModel: GoalsViewModel = hiltViewModel()
 ) {
     val activeGoals by viewModel.activeGoals.collectAsState()
     val completedGoals by viewModel.completedGoals.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
+
+    var showCreateDialog by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableStateOf(0) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Goals & Challenges") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                }
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { /* Navigate to create goal */ }
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Goal")
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Handle UI state changes
+    LaunchedEffect(uiState) {
+        when (val state = uiState) {
+            is GoalUiState.Success -> {
+                snackbarHostState.showSnackbar(state.message)
+                viewModel.resetUiState()
+                showCreateDialog = false
             }
+            is GoalUiState.Error -> {
+                snackbarHostState.showSnackbar(state.message)
+                viewModel.resetUiState()
+            }
+            else -> {}
         }
-    ) { padding ->
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
+            modifier = Modifier. fillMaxSize()
         ) {
+            // Tabs
             TabRow(selectedTabIndex = selectedTab) {
                 Tab(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
-                    text = { Text("Active") }
+                    text = { Text("Active (${activeGoals.size})") }
                 )
                 Tab(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
-                    text = { Text("Completed") }
+                    text = { Text("Completed (${completedGoals.size})") }
                 )
             }
 
-            val goals = if (selectedTab == 0) activeGoals else completedGoals
+            // Content
+            when (selectedTab) {
+                0 -> ActiveGoalsTab(
+                    goals = activeGoals,
+                    onDeleteGoal = viewModel::deleteGoal,
+                    onCompleteGoal = viewModel::markGoalAsCompleted
+                )
+                1 -> CompletedGoalsTab(
+                    goals = completedGoals,
+                    onDeleteGoal = viewModel::deleteGoal
+                )
+            }
+        }
 
-            if (goals.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+        // FAB
+        FloatingActionButton(
+            onClick = { showCreateDialog = true },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp)
+        ) {
+            Icon(Icons.Default.Add, contentDescription = "Create Goal")
+        }
+
+        // Snackbar
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 80.dp)
+        )
+    }
+
+    // Create Goal Dialog
+    if (showCreateDialog) {
+        CreateGoalDialog(
+            onDismiss = { showCreateDialog = false },
+            onCreateGoal = viewModel::createGoal
+        )
+    }
+}
+
+@Composable
+fun ActiveGoalsTab(
+    goals: List<Goal>,
+    onDeleteGoal: (String) -> Unit,
+    onCompleteGoal: (String) -> Unit
+) {
+    if (goals.isEmpty()) {
+        Box(
+            modifier = Modifier. fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "No active goals",
+                    style = MaterialTheme.typography. titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "Tap + to create your first goal",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme. onSurfaceVariant
+                )
+            }
+        }
+    } else {
+        LazyColumn(
+            modifier = Modifier. fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement. spacedBy(12.dp)
+        ) {
+            items(goals, key = { it.id }) { goal ->
+                GoalCard(
+                    goal = goal,
+                    onDelete = { onDeleteGoal(goal.id) },
+                    onComplete = { onCompleteGoal(goal.id) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun CompletedGoalsTab(
+    goals: List<Goal>,
+    onDeleteGoal: (String) -> Unit
+) {
+    if (goals.isEmpty()) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "No completed goals yet",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme. colorScheme.onSurfaceVariant
+            )
+        }
+    } else {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(goals, key = { it. id }) { goal ->
+                CompletedGoalCard(
+                    goal = goal,
+                    onDelete = { onDeleteGoal(goal.id) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun GoalCard(
+    goal: Goal,
+    onDelete: () -> Unit,
+    onComplete: () -> Unit
+) {
+    val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale. getDefault()) }
+
+    Card(
+        modifier = Modifier. fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement. spacedBy(12.dp)
+        ) {
+            // Header
+            Row(
+                modifier = Modifier. fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = goal.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    if (goal.description.isNotBlank()) {
+                        Text(
+                            text = goal.description,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                // Goal Type Badge
+                Surface(
+                    shape = MaterialTheme.shapes.small,
+                    color = MaterialTheme.colorScheme.primaryContainer
                 ) {
                     Text(
-                        text = if (selectedTab == 0) "No active goals.\nCreate your first goal!" 
-                               else "No completed goals yet.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = goal.goalType.name,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        style = MaterialTheme. typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+            }
+
+            Divider()
+
+            // Progress
+            Row(
+                modifier = Modifier. fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "${goal.currentSteps} / ${goal.targetSteps} steps",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = "${(goal.progress * 100).toInt()}%",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme. colorScheme.primary
+                )
+            }
+
+            LinearProgressIndicator(
+                progress = goal.progress,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            // End Date
+            Text(
+                text = "Ends:  ${dateFormat.format(Date(goal.endDate))} (${goal. daysRemaining} days left)",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            // Actions
+            Row(
+                modifier = Modifier. fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onDelete,
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
                 ) {
-                    items(goals) { goal ->
-                        GoalItem(goal)
-                    }
+                    Icon(
+                        Icons.Default. Delete,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text("Delete")
+                }
+
+                Button(
+                    onClick = onComplete,
+                    modifier = Modifier.weight(1f),
+                    enabled = goal.progress >= 1f
+                ) {
+                    Icon(
+                        Icons.Default. CheckCircle,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier. width(4.dp))
+                    Text("Complete")
                 }
             }
         }
@@ -91,56 +309,76 @@ fun GoalsScreen(
 }
 
 @Composable
-fun GoalItem(goal: Goal) {
+fun CompletedGoalCard(
+    goal: Goal,
+    onDelete: () -> Unit
+) {
+    val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
+
     Card(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults. cardColors(
+            containerColor = MaterialTheme.colorScheme. surfaceVariant
+        )
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                modifier = Modifier. fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = goal.goalType.replaceFirstChar { it.uppercase() },
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Text(
-                    text = goal.period.replaceFirstChar { it.uppercase() },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            Icons.Default. CheckCircle,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = goal.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    if (goal.description.isNotBlank()) {
+                        Text(
+                            text = goal.description,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
 
-            val progress = (goal.currentValue.toFloat() / goal.targetValue.toFloat()).coerceIn(0f, 1f)
-
-            LinearProgressIndicator(
-                progress = progress,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "${goal.currentValue.toInt()} / ${goal.targetValue.toInt()}",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Text(
-                    text = "${(progress * 100).toInt()}%",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                IconButton(onClick = onDelete) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "Delete",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
             }
 
             Text(
-                text = "${goal.startDate} to ${goal.endDate}",
-                style = MaterialTheme.typography.bodySmall,
+                text = "${goal. currentSteps} / ${goal. targetSteps} steps",
+                style = MaterialTheme.typography. bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+
+            goal.completedAt?.let {
+                Text(
+                    text = "Completed on ${dateFormat.format(Date(it))}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         }
     }
 }

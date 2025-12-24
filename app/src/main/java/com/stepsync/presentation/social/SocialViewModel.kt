@@ -11,11 +11,14 @@ import kotlinx.coroutines.flow. SharingStarted
 import kotlinx.coroutines.flow. StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import com.stepsync.data.model.LeaderboardEntry
+import com.stepsync.domain.repository.ChallengeRepository
 import javax.inject. Inject
 
 @HiltViewModel
 class SocialViewModel @Inject constructor(
     private val friendRepository: FriendRepository,
+    private val challengeRepository: ChallengeRepository,
     private val sharedPreferences: SharedPreferences
 ) : ViewModel() {
 
@@ -28,6 +31,10 @@ class SocialViewModel @Inject constructor(
     val pendingRequests: StateFlow<List<Friend>> = friendRepository
         . getPendingRequests(userId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val globalLeaderboard: StateFlow<List<LeaderboardEntry>> = challengeRepository
+        . getGlobalLeaderboard()
+        .stateIn(viewModelScope, SharingStarted. WhileSubscribed(5000), emptyList())
 
     fun addFriend(email: String) {
         viewModelScope.launch {

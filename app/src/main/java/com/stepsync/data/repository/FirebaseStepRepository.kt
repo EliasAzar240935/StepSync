@@ -209,10 +209,10 @@ class FirebaseStepRepository @Inject constructor(
         try {
             val existingQuery = stepRecordsCollection
                 .whereEqualTo("userId", currentUser.uid)
-                . whereEqualTo("date", date)
+                .whereEqualTo("date", date)
                 .limit(1)
                 .get()
-                . await()
+                .await()
 
             val recordData = hashMapOf(
                 "userId" to currentUser.uid,
@@ -220,22 +220,36 @@ class FirebaseStepRepository @Inject constructor(
                 "steps" to steps,
                 "distance" to distance,
                 "calories" to calories,
-                "timestamp" to System. currentTimeMillis()
+                "timestamp" to System.currentTimeMillis()
             )
+
+            // Calculate the step difference to add to challenges
+            val stepDifference = if (! existingQuery.isEmpty) {
+                val oldSteps = existingQuery.documents[0].getLong("steps")?.toInt() ?: 0
+                steps - oldSteps  // Only add the NEW steps
+            } else {
+                steps  // All steps are new
+            }
 
             if (! existingQuery.isEmpty) {
                 val documentId = existingQuery.documents[0].id
-                stepRecordsCollection.document(documentId).update(recordData as Map<String, Any>). await()
+                stepRecordsCollection.document(documentId).update(recordData as Map<String, Any>).await()
             } else {
                 stepRecordsCollection.add(recordData).await()
             }
+
+            // ADD THIS:  Update challenge progress with the new steps
+            if (stepDifference > 0) {
+                updateChallengeProgress(currentUser.uid, stepDifference)
+            }
+
         } catch (e: Exception) {
             throw Exception("Failed to save step record: ${e.message}")
         }
     }
 
     override suspend fun updateSteps(userId: String, date: String, steps: Int) {
-        val currentUser = auth.currentUser ?: throw Exception("No authenticated user")
+        val currentUser = auth. currentUser ?: throw Exception("No authenticated user")
 
         try {
             val querySnapshot = stepRecordsCollection
@@ -247,6 +261,9 @@ class FirebaseStepRepository @Inject constructor(
 
             if (!querySnapshot.isEmpty) {
                 val documentId = querySnapshot.documents[0].id
+                val oldSteps = querySnapshot.documents[0].getLong("steps")?.toInt() ?: 0
+                val stepDifference = steps - oldSteps
+
                 stepRecordsCollection.document(documentId)
                     .update(
                         mapOf(
@@ -255,9 +272,41 @@ class FirebaseStepRepository @Inject constructor(
                         )
                     )
                     .await()
+
+                // ADD THIS:  Update challenge progress with the new steps
+                if (stepDifference > 0) {
+                    updateChallengeProgress(currentUser. uid, stepDifference)
+                }
             }
         } catch (e: Exception) {
-            throw Exception("Failed to update steps: ${e. message}")
+            throw Exception("Failed to update steps: ${e.message}")
+        }
+    }
+
+    private suspend fun updateChallengeProgress(userId:  String, steps: Int) {
+        try {
+            // Get all active participations for this user
+            val participations = firestore.collection("challenge_participations")
+                .whereEqualTo("userId", userId)
+                .get()
+                .await()
+
+            // Update each participation
+            participations.documents.forEach { doc ->
+                val currentSteps = doc.getLong("currentSteps")?.toInt() ?: 0
+                firestore.collection("challenge_participations")
+                    .document(doc. id)
+                    .update(
+                        mapOf(
+                            "currentSteps" to (currentSteps + steps),
+                            "lastUpdated" to System.currentTimeMillis()
+                        )
+                    )
+                    .await()
+            }
+        } catch (e: Exception) {
+            // Log error but don't throw - step recording should still succeed
+            android.util.Log.e("StepRepository", "Failed to update challenge progress:  ${e.message}")
         }
     }
 }

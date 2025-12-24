@@ -23,6 +23,11 @@ import com.stepsync.presentation.profile.ProfileViewModel
 import com.stepsync.presentation.social.SocialScreen
 import com.stepsync.presentation.social.SocialViewModel
 import androidx.compose.ui.Alignment
+import com.stepsync.presentation.challenges.ChallengeViewModel
+import com.stepsync. presentation.challenges.ChallengesScreen
+import com.stepsync.presentation.challenges.ChallengeDetailScreen
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 
 /**
  * Main app composable with navigation
@@ -123,6 +128,9 @@ fun StepSyncApp(
                 },
                 onNavigateToSocial = {
                     navController.navigate(Screen.Social.route)
+                },
+                onNavigateToChallenges = {
+                    navController.navigate(Screen.Challenges.route)
                 }
             )
         }
@@ -155,16 +163,54 @@ fun StepSyncApp(
         composable(Screen.Goals.route) {
             val viewModel: GoalsViewModel = hiltViewModel()
             GoalsScreen(
-                viewModel = viewModel,
-                onNavigateBack = {
-                    navController.popBackStack()
-                }
+                viewModel = viewModel
             )
         }
         
         composable(Screen.Social.route) {
             val viewModel: SocialViewModel = hiltViewModel()
             SocialScreen(
+                viewModel = viewModel,
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable("challenges") {
+            val viewModel:  ChallengeViewModel = hiltViewModel()
+            ChallengesScreen(
+                viewModel = viewModel,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToChallengeDetail = { challengeId ->
+                    navController.navigate("challenge_detail/$challengeId")  // ADD THIS
+                }
+            )
+        }
+
+        // Challenge Detail Screen - ADD THIS WHOLE BLOCK
+        composable(
+            route = "challenge_detail/{challengeId}",
+            arguments = listOf(navArgument("challengeId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val challengeId = backStackEntry.arguments?.getString("challengeId") ?: ""
+            val parentEntry = remember(backStackEntry) {
+                navController.getBackStackEntry("challenges")
+            }
+            val viewModel:  ChallengeViewModel = hiltViewModel(parentEntry)
+
+            ChallengeDetailScreen(
+                challengeId = challengeId,
+                viewModel = viewModel,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen. ChallengeDetail.route) { backStackEntry ->
+            val challengeId = backStackEntry.arguments?.getString("challengeId") ?: ""
+            val viewModel: ChallengeViewModel = hiltViewModel()
+            ChallengeDetailScreen(
+                challengeId = challengeId,
                 viewModel = viewModel,
                 onNavigateBack = {
                     navController.popBackStack()

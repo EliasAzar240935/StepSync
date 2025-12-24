@@ -1,11 +1,13 @@
 package com.stepsync.di
 
 import com.stepsync.data.repository.*
-import com.stepsync.domain.repository.*
+import com.stepsync. domain.repository.*
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import com.stepsync.data.repository.FirebaseGoalRepository
+import com. stepsync.domain.repository.GoalRepository
 import javax.inject.Singleton
 
 /**
@@ -57,4 +59,10 @@ abstract class RepositoryModule {
     abstract fun bindAchievementRepository(
         firebaseAchievementRepository: FirebaseAchievementRepository
     ): AchievementRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindChallengeRepository(
+        firebaseChallengeRepository: FirebaseChallengeRepository
+    ): ChallengeRepository
 }

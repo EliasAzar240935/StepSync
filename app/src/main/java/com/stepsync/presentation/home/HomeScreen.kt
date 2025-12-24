@@ -24,7 +24,8 @@ fun HomeScreen(
     onNavigateToProfile: () -> Unit,
     onNavigateToActivity: () -> Unit,
     onNavigateToGoals: () -> Unit,
-    onNavigateToSocial: () -> Unit
+    onNavigateToSocial: () -> Unit,
+    onNavigateToChallenges: () -> Unit
 ) {
     val currentUser by viewModel.currentUser.collectAsState()
     val todaySteps by viewModel.todaySteps.collectAsState()
@@ -66,6 +67,12 @@ fun HomeScreen(
                     onClick = onNavigateToSocial,
                     icon = { Icon(Icons.Default.People, contentDescription = "Social") },
                     label = { Text("Social") }
+                )
+                NavigationBarItem(
+                    selected = false,
+                    onClick = onNavigateToChallenges,
+                    icon = { Icon(Icons.Default.EmojiEvents, contentDescription = "Challenges") },
+                    label = { Text("Challenges") }
                 )
             }
         }

@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.stepsync.data.model.Friend
+import androidx.compose.foundation.lazy.itemsIndexed
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,7 +70,7 @@ fun SocialScreen(
             when (selectedTab) {
                 0 -> FriendsTab(friends)
                 1 -> RequestsTab(pendingRequests, viewModel)
-                2 -> LeaderboardTab()
+                2 -> LeaderboardTab(viewModel)
             }
         }
     }
@@ -130,16 +131,105 @@ fun RequestsTab(requests: List<Friend>, viewModel: SocialViewModel) {
 }
 
 @Composable
-fun LeaderboardTab() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+fun LeaderboardTab(viewModel: SocialViewModel) {
+    val globalLeaderboard by viewModel.globalLeaderboard.collectAsState()
+
+    if (globalLeaderboard.isEmpty()) {
+        Box(
+            modifier = Modifier. fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+    } else {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            item {
+                Text(
+                    text = "Global Rankings",
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
+
+            itemsIndexed(globalLeaderboard) { index, entry ->
+                GlobalLeaderboardItem(entry = entry, rank = index + 1)
+            }
+        }
+    }
+}
+
+@Composable
+fun GlobalLeaderboardItem(entry: com.stepsync.data.model.LeaderboardEntry, rank: Int) {
+    Card(
+        modifier = Modifier. fillMaxWidth(),
+        colors = if (entry.isCurrentUser) {
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer
+            )
+        } else {
+            CardDefaults. cardColors()
+        }
     ) {
-        Text(
-            text = "Leaderboard coming soon!",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                horizontalArrangement = Arrangement. spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                // Rank badge
+                Surface(
+                    shape = MaterialTheme.shapes.small,
+                    color = when (rank) {
+                        1 -> MaterialTheme.colorScheme.primary
+                        2 -> MaterialTheme.colorScheme.secondary
+                        3 -> MaterialTheme.colorScheme. tertiary
+                        else -> MaterialTheme.colorScheme.surfaceVariant
+                    }
+                ) {
+                    Text(
+                        text = "#$rank",
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = if (rank <= 3) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Column {
+                    Text(
+                        text = entry.userName + if (entry.isCurrentUser) " (You)" else "",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = if (entry.isCurrentUser) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme. colorScheme.onSurface
+                    )
+                }
+            }
+
+            // Total Steps
+            Column(
+                horizontalAlignment = Alignment.End
+            ) {
+                Text(
+                    text = "${entry. steps}",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "total steps",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
     }
 }
 
