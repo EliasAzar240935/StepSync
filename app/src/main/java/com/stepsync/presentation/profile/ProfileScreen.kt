@@ -1,126 +1,166 @@
 package com.stepsync.presentation.profile
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.foundation. layout.*
+import androidx.compose. material. icons.Icons
+import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com. stepsync.data.model. User
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose. material3.Scaffold
+import androidx.compose.material3.TopAppBar
+import androidx. compose.material3.TopAppBarDefaults
+import androidx.compose. material3.IconButton
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
-    viewModel: ProfileViewModel,
-    onNavigateBack: () -> Unit,
-    onNavigateToLogin: () -> Unit
+    viewModel: ProfileViewModel = hiltViewModel(),
+    onNavigateToLogin: () -> Unit,
+    onNavigateBack: () -> Unit  // ✅ Add this parameter
 ) {
-    val user by viewModel.user.collectAsState()
-    val achievementCount by viewModel.achievementCount.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Profile") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                }
+    when (uiState) {
+        is ProfileUiState.Loading -> {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        }
+        is ProfileUiState.NotAuthenticated -> {
+            LaunchedEffect(Unit) {
+                onNavigateToLogin()
+            }
+        }
+        is ProfileUiState.Success -> {
+            val user = (uiState as ProfileUiState.Success).user
+            ProfileContent(
+                user = user,
+                onLogout = { viewModel.logout() },
+                onNavigateBack = onNavigateBack  // ✅ Pass it here
             )
         }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            user?.let { currentUser ->
-                Card(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = currentUser.name,
-                            style = MaterialTheme.typography.headlineMedium
-                        )
-                        Text(
-                            text = currentUser.email,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+        is ProfileUiState.Error -> {
+            val message = (uiState as ProfileUiState. Error).message
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(text = message, color = MaterialTheme.colorScheme.error)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(onClick = onNavigateToLogin) {
+                        Text("Go to Login")
                     }
-                }
-
-                Card(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Text(
-                            text = "Personal Information",
-                            style = MaterialTheme.typography.titleLarge
-                        )
-                        
-                        ProfileInfoRow("Age", "${currentUser.age} years")
-                        ProfileInfoRow("Weight", "${currentUser.weight} kg")
-                        ProfileInfoRow("Height", "${currentUser.height} cm")
-                        ProfileInfoRow("Daily Step Goal", "${currentUser.dailyStepGoal} steps")
-                        ProfileInfoRow("Fitness Goal", formatFitnessGoal(currentUser.fitnessGoal))
-                    }
-                }
-
-                Card(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Text(
-                            text = "Achievements",
-                            style = MaterialTheme.typography.titleLarge
-                        )
-                        Text(
-                            text = "$achievementCount Achievements Unlocked",
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    }
-                }
-
-                Button(
-                    onClick = {
-                        viewModel.logout()
-                        onNavigateToLogin()
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Text("Logout")
                 }
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProfileInfoRow(label: String, value: String) {
+private fun ProfileContent(
+    user:  User,
+    onLogout:  () -> Unit,
+    onNavigateBack: (() -> Unit)? = null,
+    modifier:  Modifier = Modifier
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Profile") },
+                navigationIcon = {
+                    if (onNavigateBack != null) {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(
+                                imageVector = Icons.Default.ArrowBack,
+                                contentDescription = "Back"
+                            )
+                        }
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            )
+        }
+    ) { padding ->
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // User Avatar/Icon
+            Icon(
+                imageVector = Icons.Default.Person,
+                contentDescription = "Profile Picture",
+                modifier = Modifier
+                    .size(100.dp)
+                    .padding(bottom = 16.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+
+            // User Info Card
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    ProfileInfoRow(label = "Name", value = user. name)
+                    Spacer(modifier = Modifier. height(8.dp))
+                    ProfileInfoRow(label = "Email", value = user.email)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    ProfileInfoRow(label = "Friend Code", value = user.friendCode)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    ProfileInfoRow(label = "Age", value = user.age. toString())
+                    Spacer(modifier = Modifier.height(8.dp))
+                    ProfileInfoRow(label = "Weight", value = "${user.weight} kg")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    ProfileInfoRow(label = "Height", value = "${user.height} cm")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    ProfileInfoRow(label = "Fitness Goal", value = user.fitnessGoal)
+                }
+            }
+
+            Spacer(modifier = Modifier. weight(1f))
+
+            // Logout Button
+            Button(
+                onClick = onLogout,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp),
+                colors = ButtonDefaults. buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ExitToApp,
+                    contentDescription = null,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+                Text("Logout")
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileInfoRow(
+    label: String,
+    value: String,
+    modifier:  Modifier = Modifier
+) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement. SpaceBetween
     ) {
         Text(
             text = label,
@@ -130,17 +170,7 @@ fun ProfileInfoRow(label: String, value: String) {
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface
+            fontWeight = FontWeight. Bold
         )
-    }
-}
-
-fun formatFitnessGoal(goal: String): String {
-    return when (goal) {
-        "weight_loss" -> "Weight Loss"
-        "muscle_gain" -> "Muscle Gain"
-        "fitness" -> "General Fitness"
-        "health" -> "Health Improvement"
-        else -> goal
     }
 }

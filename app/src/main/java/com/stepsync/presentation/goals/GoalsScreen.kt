@@ -1,12 +1,14 @@
-package com.stepsync.presentation. goals
+package com.stepsync.presentation.goals
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation. lazy.items
-import androidx.compose.material. icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material. icons.filled.CheckCircle
-import androidx.compose. material.icons.filled.Delete
+import androidx.compose. foundation.layout.*
+import androidx. compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy. items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material. icons.filled.Add
+import androidx.compose.material. icons.filled.ArrowBack
+import androidx.compose. material.icons.filled.CheckCircle
+import androidx.compose.material. icons.filled.Delete
+import androidx.compose.material. icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui. Alignment
@@ -15,14 +17,13 @@ import androidx. compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.stepsync.data.model.Goal
-import com.stepsync. data.model.GoalType
 import java.text.SimpleDateFormat
 import java. util.*
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GoalsScreen(
-    viewModel: GoalsViewModel = hiltViewModel()
+    viewModel:  GoalsViewModel = hiltViewModel(),
+    onNavigateBack: () -> Unit = {}
 ) {
     val activeGoals by viewModel.activeGoals.collectAsState()
     val completedGoals by viewModel.completedGoals.collectAsState()
@@ -53,6 +54,39 @@ fun GoalsScreen(
         Column(
             modifier = Modifier. fillMaxSize()
         ) {
+            // Header with back button and refresh
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement. SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                    Text(
+                        text = "My Goals",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                IconButton(onClick = { viewModel.refreshGoals() }) {
+                    Icon(
+                        imageVector = Icons.Default. Refresh,
+                        contentDescription = "Refresh"
+                    )
+                }
+            }
+
             // Tabs
             TabRow(selectedTabIndex = selectedTab) {
                 Tab(
@@ -63,7 +97,7 @@ fun GoalsScreen(
                 Tab(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
-                    text = { Text("Completed (${completedGoals.size})") }
+                    text = { Text("Completed (${completedGoals. size})") }
                 )
             }
 
@@ -111,7 +145,7 @@ fun GoalsScreen(
 
 @Composable
 fun ActiveGoalsTab(
-    goals: List<Goal>,
+    goals:  List<Goal>,
     onDeleteGoal: (String) -> Unit,
     onCompleteGoal: (String) -> Unit
 ) {
@@ -126,7 +160,7 @@ fun ActiveGoalsTab(
             ) {
                 Text(
                     text = "No active goals",
-                    style = MaterialTheme.typography. titleMedium,
+                    style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
@@ -138,7 +172,7 @@ fun ActiveGoalsTab(
         }
     } else {
         LazyColumn(
-            modifier = Modifier. fillMaxSize(),
+            modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement. spacedBy(12.dp)
         ) {
@@ -189,35 +223,35 @@ fun CompletedGoalsTab(
 fun GoalCard(
     goal: Goal,
     onDelete: () -> Unit,
-    onComplete: () -> Unit
+    onComplete:  () -> Unit
 ) {
-    val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale. getDefault()) }
+    val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
 
     Card(
-        modifier = Modifier. fillMaxWidth()
+        modifier = Modifier.fillMaxWidth()
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            verticalArrangement = Arrangement. spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Header
             Row(
-                modifier = Modifier. fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = goal.title,
+                        text = goal. title,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
                     if (goal.description.isNotBlank()) {
                         Text(
                             text = goal.description,
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography. bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -226,7 +260,7 @@ fun GoalCard(
                 // Goal Type Badge
                 Surface(
                     shape = MaterialTheme.shapes.small,
-                    color = MaterialTheme.colorScheme.primaryContainer
+                    color = MaterialTheme. colorScheme.primaryContainer
                 ) {
                     Text(
                         text = goal.goalType.name,
@@ -264,25 +298,25 @@ fun GoalCard(
 
             // End Date
             Text(
-                text = "Ends:  ${dateFormat.format(Date(goal.endDate))} (${goal. daysRemaining} days left)",
+                text = "Ends:  ${dateFormat.format(Date(goal.endDate))} (${goal.daysRemaining} days left)",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             // Actions
             Row(
-                modifier = Modifier. fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 OutlinedButton(
                     onClick = onDelete,
                     modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error
+                    colors = ButtonDefaults. outlinedButtonColors(
+                        contentColor = MaterialTheme. colorScheme.error
                     )
                 ) {
                     Icon(
-                        Icons.Default. Delete,
+                        Icons.Default.Delete,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )
@@ -296,9 +330,9 @@ fun GoalCard(
                     enabled = goal.progress >= 1f
                 ) {
                     Icon(
-                        Icons.Default. CheckCircle,
+                        Icons.Default.CheckCircle,
                         contentDescription = null,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier. size(18.dp)
                     )
                     Spacer(Modifier. width(4.dp))
                     Text("Complete")
@@ -311,7 +345,7 @@ fun GoalCard(
 @Composable
 fun CompletedGoalCard(
     goal: Goal,
-    onDelete: () -> Unit
+    onDelete:  () -> Unit
 ) {
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
 
@@ -323,9 +357,9 @@ fun CompletedGoalCard(
     ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                . fillMaxWidth()
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement. spacedBy(8.dp)
         ) {
             Row(
                 modifier = Modifier. fillMaxWidth(),
@@ -338,12 +372,12 @@ fun CompletedGoalCard(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Icon(
-                            Icons.Default. CheckCircle,
+                            Icons.Default.CheckCircle,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            text = goal.title,
+                            text = goal. title,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -372,7 +406,7 @@ fun CompletedGoalCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            goal.completedAt?.let {
+            goal.completedAt?. let {
                 Text(
                     text = "Completed on ${dateFormat.format(Date(it))}",
                     style = MaterialTheme.typography.bodySmall,

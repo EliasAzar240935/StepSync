@@ -1,18 +1,17 @@
 package com.stepsync.presentation.home
 
-import androidx.compose.foundation.layout.*
+import androidx. compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.lazy. items
+import androidx.compose.material. icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui. Alignment
+import androidx.compose. ui.Modifier
+import androidx. compose.ui.unit.dp
 import com.stepsync.data.model.StepRecord
-import com.stepsync.util.CalculationUtils
-import com.stepsync.util.Constants
+import com. stepsync.util.Constants
 
 /**
  * Home screen showing step count and progress
@@ -29,7 +28,7 @@ fun HomeScreen(
 ) {
     val currentUser by viewModel.currentUser.collectAsState()
     val todaySteps by viewModel.todaySteps.collectAsState()
-    val recentSteps by viewModel.recentSteps.collectAsState()
+    val recentSteps by viewModel.recentSteps. collectAsState()
 
     Scaffold(
         topBar = {
@@ -37,7 +36,7 @@ fun HomeScreen(
                 title = { Text("StepSync") },
                 actions = {
                     IconButton(onClick = onNavigateToProfile) {
-                        Icon(Icons.Default.Person, contentDescription = "Profile")
+                        Icon(Icons. Default.Person, contentDescription = "Profile")
                     }
                 }
             )
@@ -85,9 +84,9 @@ fun HomeScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                currentUser?.let { user ->
+                currentUser?. let { user ->
                     Text(
-                        text = "Welcome, ${user.name}!",
+                        text = "Welcome, " + user.name + "!",
                         style = MaterialTheme.typography.headlineMedium
                     )
                 }
@@ -106,24 +105,25 @@ fun HomeScreen(
                             style = MaterialTheme.typography.titleLarge
                         )
                         Spacer(modifier = Modifier.height(8.dp))
+                        val steps = todaySteps?.steps ?: 0
                         Text(
-                            text = "${todaySteps?.steps ?: 0}",
+                            text = steps.toString(),
                             style = MaterialTheme.typography.displayLarge,
                             color = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        
+
                         val goal = currentUser?.dailyStepGoal ?: Constants.DEFAULT_DAILY_STEP_GOAL
-                        val progress = (todaySteps?.steps ?: 0).toFloat() / goal.toFloat()
-                        
+                        val progress = steps. toFloat() / goal.toFloat()
+
                         LinearProgressIndicator(
-                            progress = progress.coerceIn(0f, 1f),
+                            progress = progress. coerceIn(0f, 1f),
                             modifier = Modifier.fillMaxWidth()
                         )
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Spacer(modifier = Modifier. height(8.dp))
                         Text(
-                            text = "Goal: $goal steps",
+                            text = "Goal: " + goal.toString() + " steps",
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
@@ -136,7 +136,7 @@ fun HomeScreen(
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Card(
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier. weight(1f)
                     ) {
                         Column(
                             modifier = Modifier.padding(16.dp),
@@ -144,9 +144,10 @@ fun HomeScreen(
                         ) {
                             Icon(Icons.Default.DirectionsWalk, contentDescription = null)
                             Spacer(modifier = Modifier.height(8.dp))
+                            val distance = todaySteps?.distance ?: 0f
                             Text(
-                                text = CalculationUtils.formatDistance(todaySteps?.distance ?: 0f),
-                                style = MaterialTheme.typography.titleMedium
+                                text = String.format("%.2f km", distance),
+                                style = MaterialTheme.typography. titleMedium
                             )
                             Text(
                                 text = "Distance",
@@ -156,16 +157,17 @@ fun HomeScreen(
                     }
 
                     Card(
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier. weight(1f)
                     ) {
                         Column(
                             modifier = Modifier.padding(16.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Icon(Icons.Default.LocalFireDepartment, contentDescription = null)
+                            Icon(Icons. Default.LocalFireDepartment, contentDescription = null)
                             Spacer(modifier = Modifier.height(8.dp))
+                            val calories = todaySteps?.calories ?: 0f
                             Text(
-                                text = CalculationUtils.formatCalories(todaySteps?.calories ?: 0f),
+                                text = calories.toInt().toString() + " kcal",
                                 style = MaterialTheme.typography.titleMedium
                             )
                             Text(
@@ -194,13 +196,13 @@ fun HomeScreen(
 @Composable
 fun StepRecordItem(record: StepRecord) {
     Card(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier. fillMaxWidth()
     ) {
         Row(
             modifier = Modifier
-                .fillMaxWidth()
+                . fillMaxWidth()
                 .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement. SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column {
@@ -209,20 +211,20 @@ fun StepRecordItem(record: StepRecord) {
                     style = MaterialTheme.typography.titleMedium
                 )
                 Text(
-                    text = "${record.steps} steps",
+                    text = record.steps. toString() + " steps",
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
             Column(
-                horizontalAlignment = Alignment.End
+                horizontalAlignment = Alignment. End
             ) {
                 Text(
-                    text = CalculationUtils.formatDistance(record.distance),
+                    text = String. format("%.2f km", record.distance),
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Text(
-                    text = CalculationUtils.formatCalories(record.calories),
-                    style = MaterialTheme.typography.bodySmall
+                    text = record. calories.toInt().toString() + " kcal",
+                    style = MaterialTheme.typography. bodySmall
                 )
             }
         }

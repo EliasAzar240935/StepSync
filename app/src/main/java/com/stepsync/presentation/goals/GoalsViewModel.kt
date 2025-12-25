@@ -1,15 +1,15 @@
 package com.stepsync.presentation.goals
 
 import android.util.Log
-import androidx.lifecycle.ViewModel
+import androidx. lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com. google.firebase.auth.FirebaseAuth
 import com.stepsync.data.model.Goal
-import com.stepsync. data.model.GoalType
-import com.stepsync. domain.repository.GoalRepository
-import dagger.hilt.android. lifecycle.HiltViewModel
-import kotlinx.coroutines.flow. MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import com.stepsync.data.model.GoalType
+import com. stepsync.domain.repository. GoalRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow. StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
@@ -22,17 +22,17 @@ class GoalsViewModel @Inject constructor(
     private val auth: FirebaseAuth
 ) : ViewModel() {
 
-    private val userId:  String
+    private val userId: String
         get() = auth.currentUser?. uid ?: ""
 
     private val _activeGoals = MutableStateFlow<List<Goal>>(emptyList())
-    val activeGoals: StateFlow<List<Goal>> = _activeGoals.asStateFlow()
+    val activeGoals:  StateFlow<List<Goal>> = _activeGoals.asStateFlow()
 
     private val _completedGoals = MutableStateFlow<List<Goal>>(emptyList())
     val completedGoals: StateFlow<List<Goal>> = _completedGoals.asStateFlow()
 
-    private val _uiState = MutableStateFlow<GoalUiState>(GoalUiState. Idle)
-    val uiState: StateFlow<GoalUiState> = _uiState. asStateFlow()
+    private val _uiState = MutableStateFlow<GoalUiState>(GoalUiState.Idle)
+    val uiState: StateFlow<GoalUiState> = _uiState.asStateFlow()
 
     init {
         Log.d("GoalsViewModel", "Initializing with userId: $userId")
@@ -41,19 +41,24 @@ class GoalsViewModel @Inject constructor(
 
     private fun loadGoals() {
         if (userId.isEmpty()) {
-            Log.e("GoalsViewModel", "User not authenticated!")
+            Log.e("GoalsViewModel", "❌ User not authenticated!")
             _uiState.value = GoalUiState.Error("User not authenticated")
             return
         }
 
+        Log. d("GoalsViewModel", "✅ Loading goals for userId: $userId")
+
         viewModelScope.launch {
             goalRepository.getActiveGoals(userId)
                 .catch { e ->
-                    Log.e("GoalsViewModel", "Error loading active goals", e)
+                    Log.e("GoalsViewModel", "❌ Error loading active goals", e)
                     _uiState.value = GoalUiState.Error("Failed to load goals:  ${e.message}")
                 }
                 .collect { goals ->
-                    Log.d("GoalsViewModel", "Active goals loaded: ${goals.size}")
+                    Log.d("GoalsViewModel", "📊 Active goals loaded: ${goals.size}")
+                    goals.forEach { goal ->
+                        Log.d("GoalsViewModel", "  - Goal: ${goal.title}, ID: ${goal.id}")
+                    }
                     _activeGoals.value = goals
                 }
         }
@@ -61,10 +66,10 @@ class GoalsViewModel @Inject constructor(
         viewModelScope.launch {
             goalRepository.getCompletedGoals(userId)
                 .catch { e ->
-                    Log.e("GoalsViewModel", "Error loading completed goals", e)
+                    Log.e("GoalsViewModel", "❌ Error loading completed goals", e)
                 }
                 .collect { goals ->
-                    Log.d("GoalsViewModel", "Completed goals loaded:  ${goals.size}")
+                    Log.d("GoalsViewModel", "📊 Completed goals loaded: ${goals.size}")
                     _completedGoals.value = goals
                 }
         }
@@ -109,8 +114,8 @@ class GoalsViewModel @Inject constructor(
                     createdAt = now
                 )
 
-                Log.d("GoalsViewModel", "Creating goal:  $goal")
-                goalRepository. createGoal(goal)
+                Log.d("GoalsViewModel", "Creating goal: $goal")
+                goalRepository.createGoal(goal)
                 _uiState.value = GoalUiState.Success("Goal created successfully!")
             } catch (e: Exception) {
                 Log.e("GoalsViewModel", "Error creating goal", e)
@@ -122,7 +127,7 @@ class GoalsViewModel @Inject constructor(
     fun deleteGoal(goalId: String) {
         viewModelScope.launch {
             try {
-                _uiState.value = GoalUiState.Loading
+                _uiState. value = GoalUiState. Loading
                 goalRepository.deleteGoal(goalId)
                 _uiState.value = GoalUiState.Success("Goal deleted")
             } catch (e: Exception) {
@@ -148,6 +153,11 @@ class GoalsViewModel @Inject constructor(
         _uiState.value = GoalUiState.Idle
     }
 
+    fun refreshGoals() {
+        Log.d("GoalsViewModel", "🔄 Manual refresh triggered")
+        loadGoals()
+    }
+
     private fun calculateGoalDates(goalType: GoalType): Pair<Long, Long> {
         val calendar = Calendar.getInstance()
         val startDate = calendar.timeInMillis
@@ -165,9 +175,9 @@ class GoalsViewModel @Inject constructor(
                 calendar.set(Calendar.SECOND, 59)
             }
             GoalType.MONTHLY -> {
-                calendar.add(Calendar.MONTH, 1)
+                calendar.add(Calendar. MONTH, 1)
                 calendar.set(Calendar.HOUR_OF_DAY, 23)
-                calendar. set(Calendar.MINUTE, 59)
+                calendar.set(Calendar. MINUTE, 59)
                 calendar.set(Calendar.SECOND, 59)
             }
             GoalType.CUSTOM -> {

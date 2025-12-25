@@ -1,6 +1,6 @@
-package com.stepsync.presentation.goals
+package com.stepsync. presentation.goals
 
-import androidx.compose. foundation.layout.*
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx. compose.material3.*
 import androidx.compose.runtime.*
@@ -12,7 +12,7 @@ import com.stepsync.data.model.GoalType
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateGoalDialog(
-    onDismiss: () -> Unit,
+    onDismiss:  () -> Unit,
     onCreateGoal: (String, String, Int, GoalType) -> Unit
 ) {
     var title by remember { mutableStateOf("") }
@@ -27,8 +27,8 @@ fun CreateGoalDialog(
         text = {
             Column(
                 modifier = Modifier
-                    . fillMaxWidth()
-                    . padding(vertical = 8.dp),
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
                 verticalArrangement = Arrangement. spacedBy(12.dp)
             ) {
                 // Title
@@ -48,7 +48,7 @@ fun CreateGoalDialog(
                     label = { Text("Description (Optional)") },
                     modifier = Modifier.fillMaxWidth(),
                     maxLines = 3,
-                    placeholder = { Text("Add more details... ") }
+                    placeholder = { Text("Add more details...") }
                 )
 
                 // Target Steps
@@ -77,7 +77,7 @@ fun CreateGoalDialog(
                         onValueChange = {},
                         readOnly = true,
                         label = { Text("Goal Type") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        trailingIcon = { ExposedDropdownMenuDefaults. TrailingIcon(expanded = expanded) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .menuAnchor()
@@ -111,7 +111,7 @@ fun CreateGoalDialog(
                         DropdownMenuItem(
                             text = { Text("Custom") },
                             onClick = {
-                                selectedGoalType = GoalType.CUSTOM
+                                selectedGoalType = GoalType. CUSTOM
                                 expanded = false
                             }
                         )

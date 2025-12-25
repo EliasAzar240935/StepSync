@@ -138,14 +138,13 @@ fun StepSyncApp(
         composable(Screen.Profile.route) {
             val viewModel: ProfileViewModel = hiltViewModel()
             ProfileScreen(
-                viewModel = viewModel,
-                onNavigateBack = {
-                    navController.popBackStack()
-                },
                 onNavigateToLogin = {
-                    navController.navigate(Screen.Login.route) {
-                        popUpTo(0) { inclusive = true }
+                    navController.navigate("login") {
+                        popUpTo("login") { inclusive = true }
                     }
+                },
+                onNavigateBack = {
+                    navController.navigateUp()  // ✅ Goes back to previous screen
                 }
             )
         }
@@ -159,11 +158,14 @@ fun StepSyncApp(
                 }
             )
         }
-        
-        composable(Screen.Goals.route) {
-            val viewModel: GoalsViewModel = hiltViewModel()
+
+        composable(Screen.Goals. route) {
+            val viewModel:  GoalsViewModel = hiltViewModel()
             GoalsScreen(
-                viewModel = viewModel
+                viewModel = viewModel,
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
             )
         }
         

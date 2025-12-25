@@ -8,6 +8,7 @@ data class User(
     val id: String = "",
     val email: String = "",
     val name: String = "",
+    val friendCode: String = "",
     val age: Int = 0,
     val weight: Float = 0f,
     val height: Float = 0f,

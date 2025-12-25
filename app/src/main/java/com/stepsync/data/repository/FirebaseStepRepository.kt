@@ -9,6 +9,8 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow. Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks. await
+import android.content.Context
+import com.stepsync.util.NotificationHelper
 import javax.inject.Inject
 
 /**
@@ -16,7 +18,8 @@ import javax.inject.Inject
  */
 class FirebaseStepRepository @Inject constructor(
     private val auth: FirebaseAuth,
-    private val firestore: FirebaseFirestore
+    private val firestore: FirebaseFirestore,
+    private val context: Context
 ) : StepRecordRepository {
 
     private val stepRecordsCollection = firestore.collection("stepRecords")
@@ -43,6 +46,30 @@ class FirebaseStepRepository @Inject constructor(
             }
         } catch (e: Exception) {
             null
+        }
+    }
+
+    override suspend fun insertStepRecord(stepRecord: StepRecord): Long {
+        val currentUser = auth.currentUser ?: throw Exception("No authenticated user")
+
+        try {
+            val recordData = hashMapOf(
+                "userId" to currentUser.uid,
+                "date" to stepRecord.date,
+                "steps" to stepRecord. steps,
+                "distance" to stepRecord.distance,
+                "calories" to stepRecord.calories,
+                "timestamp" to System.currentTimeMillis()
+            )
+
+            val documentRef = stepRecordsCollection.add(recordData).await()
+
+            // Update goal progress after inserting
+            updateGoalProgress(currentUser.uid)
+
+            return documentRef. id. hashCode().toLong()
+        } catch (e: Exception) {
+            throw Exception("Failed to insert step record: ${e.message}")
         }
     }
 
@@ -243,6 +270,8 @@ class FirebaseStepRepository @Inject constructor(
                 updateChallengeProgress(currentUser.uid, stepDifference)
             }
 
+            updateGoalProgress(currentUser.uid)
+
         } catch (e: Exception) {
             throw Exception("Failed to save step record: ${e.message}")
         }
@@ -308,5 +337,146 @@ class FirebaseStepRepository @Inject constructor(
             // Log error but don't throw - step recording should still succeed
             android.util.Log.e("StepRepository", "Failed to update challenge progress:  ${e.message}")
         }
+    }
+
+    private suspend fun updateGoalProgress(userId: String) {
+        try {
+            android.util.Log.d("StepRepository", "🔄 Updating goal progress for user: $userId")
+
+            // Get all active goals
+            val goalsCollection = firestore.collection("goals")
+            val activeGoals = goalsCollection
+                .whereEqualTo("userId", userId)
+                .whereEqualTo("isCompleted", false)
+                .get()
+                .await()
+
+            android.util.Log.d("StepRepository", "Found ${activeGoals.documents.size} active goals")
+
+            for (goalDoc in activeGoals.documents) {
+                try {
+                    val goalType = goalDoc.getString("goalType") ?: continue
+                    val goalName = goalDoc.getString("name") ?: "Goal"
+                    val targetSteps = goalDoc.getLong("targetSteps")?.toInt() ?: continue
+                    val startDate = goalDoc.getLong("startDate") ?: 0L
+                    val endDate = goalDoc.getLong("endDate") ?: 0L
+                    val previousSteps = goalDoc.getLong("currentSteps")?.toInt() ?: 0
+                    val wasCompleted = goalDoc.getBoolean("isCompleted") ?: false
+
+                    // Calculate date range based on goal type
+                    val dateStrings = when (goalType) {
+                        "DAILY" -> listOf(getTodayDateString())
+                        "WEEKLY" -> getLast7DaysStrings()
+                        "MONTHLY" -> getLast30DaysStrings()
+                        "CUSTOM" -> getDateRangeStrings(startDate, endDate)
+                        else -> listOf(getTodayDateString())
+                    }
+
+                    // Sum steps for all dates in range
+                    var totalSteps = 0
+                    for (dateStr in dateStrings) {
+                        val stepDocs = stepRecordsCollection
+                            .whereEqualTo("userId", userId)
+                            .whereEqualTo("date", dateStr)
+                            .get()
+                            .await()
+
+                        totalSteps += stepDocs.documents.sumOf { it.getLong("steps")?.toInt() ?: 0 }
+                    }
+
+                    android.util.Log. d("StepRepository", "Goal ${goalDoc.id}:  $totalSteps / $targetSteps steps")
+
+                    // Update goal's current steps
+                    goalsCollection.document(goalDoc.id)
+                        .update("currentSteps", totalSteps)
+                        .await()
+
+                    // Check if goal was just completed (not previously completed)
+                    val isNowCompleted = totalSteps >= targetSteps
+
+                    if (! wasCompleted && isNowCompleted) {
+                        android. util.Log.d("StepRepository", "🎉 Goal ${goalDoc.id} completed!")
+
+                        // Mark as completed
+                        goalsCollection.document(goalDoc.id)
+                            .update(mapOf(
+                                "isCompleted" to true,
+                                "completedAt" to System.currentTimeMillis()
+                            ))
+                            .await()
+
+                        // Send notification
+                        try {
+                            NotificationHelper.sendGoalCompletedNotification(
+                                context,
+                                goalName,
+                                totalSteps
+                            )
+                            android.util.Log.d("StepRepository", "📬 Sent completion notification for $goalName")
+                        } catch (e: Exception) {
+                            android.util.Log.e("StepRepository", "Failed to send notification", e)
+                        }
+                    }
+
+                } catch (e: Exception) {
+                    android.util.Log. e("StepRepository", "Error updating goal ${goalDoc.id}", e)
+                }
+            }
+
+        } catch (e: Exception) {
+            // Don't throw - step recording should still succeed
+            android.util.Log.e("StepRepository", "Failed to update goal progress: ${e. message}")
+        }
+    }
+
+    // Helper functions for date strings
+    private fun getTodayDateString(): String {
+        val calendar = java.util.Calendar.getInstance()
+        return formatDateString(calendar.timeInMillis)
+    }
+
+    private fun getLast7DaysStrings(): List<String> {
+        val dates = mutableListOf<String>()
+        val calendar = java.util.Calendar. getInstance()
+        for (i in 0 until 7) {
+            dates.add(formatDateString(calendar.timeInMillis))
+            calendar.add(java. util.Calendar.DAY_OF_YEAR, -1)
+        }
+        return dates
+    }
+
+    private fun getLast30DaysStrings(): List<String> {
+        val dates = mutableListOf<String>()
+        val calendar = java.util.Calendar.getInstance()
+        for (i in 0 until 30) {
+            dates.add(formatDateString(calendar.timeInMillis))
+            calendar.add(java.util.Calendar. DAY_OF_YEAR, -1)
+        }
+        return dates
+    }
+
+    private fun getDateRangeStrings(startMillis: Long, endMillis:  Long): List<String> {
+        val dates = mutableListOf<String>()
+        val calendar = java.util.Calendar.getInstance()
+        calendar.timeInMillis = startMillis
+
+        val endCal = java.util.Calendar.getInstance()
+        endCal.timeInMillis = endMillis
+
+        while (calendar.timeInMillis <= endCal.timeInMillis) {
+            dates.add(formatDateString(calendar. timeInMillis))
+            calendar.add(java.util.Calendar.DAY_OF_YEAR, 1)
+        }
+
+        return dates
+    }
+
+    private fun formatDateString(timeInMillis: Long): String {
+        val calendar = java.util. Calendar.getInstance()
+        calendar.timeInMillis = timeInMillis
+        val year = calendar. get(java.util.Calendar. YEAR)
+        val month = calendar.get(java.util. Calendar.MONTH) + 1
+        val day = calendar.get(java.util. Calendar.DAY_OF_MONTH)
+        return String.format("%04d-%02d-%02d", year, month, day)
     }
 }

@@ -15,6 +15,7 @@ fun DocumentSnapshot. toUser(userId: String): User?  {
             id = userId,
             email = getString("email") ?: return null,
             name = getString("name") ?: return null,
+            friendCode = getString("friendCode") ?: "",
             age = getLong("age")?.toInt() ?: return null,
             weight = getDouble("weight")?.toFloat() ?: return null,
             height = getDouble("height")?.toFloat() ?: return null,
@@ -33,6 +34,7 @@ fun User.toFirestoreMap(): Map<String, Any> {
     return hashMapOf(
         "email" to email,
         "name" to name,
+        "friendCode" to friendCode,
         "age" to age,
         "weight" to weight,
         "height" to height,
