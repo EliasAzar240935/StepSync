@@ -1,24 +1,23 @@
-package com.stepsync.presentation. social
+package com.stepsync.presentation.social
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation. layout.*
+import androidx.compose. foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy. items
 import androidx.compose.material. icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material. icons.filled.ArrowBack
-import androidx.compose.material. icons.filled.ContentCopy
+import androidx.compose.material. icons.filled.Check
+import androidx.compose.material. icons.filled.Close
 import androidx.compose.material. icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui. Alignment
 import androidx.compose. ui.Modifier
-import androidx. compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text. AnnotatedString
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
+import androidx. compose.ui.text.input.KeyboardType
+import androidx. compose.ui.unit.dp
+import androidx.compose.foundation.text.KeyboardOptions
 import com.stepsync.data.model.Friend
-import androidx.compose.foundation.lazy.itemsIndexed
+import com.stepsync.data.model.LeaderboardEntry
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,17 +27,25 @@ fun SocialScreen(
 ) {
     val friends by viewModel.friends.collectAsState()
     val pendingRequests by viewModel.pendingRequests.collectAsState()
-    val currentUser by viewModel.currentUser. collectAsState()
-    val message by viewModel.message.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
+
     var selectedTab by remember { mutableStateOf(0) }
     var showAddFriendDialog by remember { mutableStateOf(false) }
+
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Show snackbar when message changes
-    LaunchedEffect(message) {
-        message?.let {
-            snackbarHostState. showSnackbar(it)
-            viewModel.clearMessage()
+    // Show snackbar for success/error messages
+    LaunchedEffect(uiState) {
+        when (uiState) {
+            is SocialUiState.Success -> {
+                snackbarHostState. showSnackbar((uiState as SocialUiState.Success).message)
+                viewModel.resetUiState()
+            }
+            is SocialUiState.Error -> {
+                snackbarHostState.showSnackbar((uiState as SocialUiState.Error).message)
+                viewModel.resetUiState()
+            }
+            else -> {}
         }
     }
 
@@ -67,21 +74,16 @@ fun SocialScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // My Friend Code Card
-            currentUser?.let { user ->
-                MyFriendCodeCard(friendCode = user.friendCode)
-            }
-
             TabRow(selectedTabIndex = selectedTab) {
                 Tab(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
-                    text = { Text("Friends") }
+                    text = { Text("Friends (${friends.size})") }
                 )
                 Tab(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
-                    text = { Text("Requests") }
+                    text = { Text("Requests (${pendingRequests.size})") }
                 )
                 Tab(
                     selected = selectedTab == 2,
@@ -96,82 +98,33 @@ fun SocialScreen(
                 2 -> LeaderboardTab(viewModel)
             }
         }
-
-        // Add Friend Dialog
-        if (showAddFriendDialog) {
-            AddFriendDialog(
-                onDismiss = { showAddFriendDialog = false },
-                onAddFriend = { code ->
-                    viewModel.addFriendByCode(code)
-                    showAddFriendDialog = false
-                }
-            )
-        }
     }
-}
 
-@Composable
-fun MyFriendCodeCard(friendCode: String) {
-    val clipboardManager = LocalClipboardManager.current
-    val context = LocalContext.current
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme. colorScheme.primaryContainer
+    // Add Friend Dialog
+    if (showAddFriendDialog) {
+        AddFriendDialog(
+            onDismiss = { showAddFriendDialog = false },
+            onAddFriend = { email ->
+                viewModel.addFriend(email)
+                showAddFriendDialog = false
+            },
+            isLoading = uiState is SocialUiState.Loading
         )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Text(
-                    text = "Your Friend Code",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-                Text(
-                    text = friendCode. ifEmpty { "Loading..." },
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
-
-            if (friendCode.isNotEmpty()) {
-                IconButton(
-                    onClick = {
-                        clipboardManager.setText(AnnotatedString(friendCode))
-                        android.widget.Toast.makeText(context, "Friend code copied!", android.widget.Toast.LENGTH_SHORT).show()
-                    }
-                ) {
-                    Icon(
-                        Icons.Default.ContentCopy,
-                        contentDescription = "Copy Friend Code",
-                        tint = MaterialTheme.colorScheme. onPrimaryContainer
-                    )
-                }
-            }
-        }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddFriendDialog(
     onDismiss: () -> Unit,
-    onAddFriend: (String) -> Unit
+    onAddFriend: (String) -> Unit,
+    isLoading: Boolean
 ) {
     var friendCode by remember { mutableStateOf("") }
-    var errorMessage by remember { mutableStateOf("") }
+    var codeError by remember { mutableStateOf<String?>(null) }
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (! isLoading) onDismiss() },
         title = { Text("Add Friend") },
         text = {
             Column(
@@ -181,47 +134,53 @@ fun AddFriendDialog(
                     text = "Enter your friend's code",
                     style = MaterialTheme.typography.bodyMedium
                 )
+
                 OutlinedTextField(
                     value = friendCode,
                     onValueChange = {
-                        friendCode = it. uppercase()
-                        errorMessage = ""
+                        // Auto-format and uppercase
+                        friendCode = it.uppercase().take(9)
+                        codeError = null
                     },
                     label = { Text("Friend Code") },
-                    placeholder = { Text("STEP-A1B2C3") },
+                    placeholder = { Text("STEP-XXXX") },
                     singleLine = true,
-                    isError = errorMessage.isNotEmpty(),
+                    isError = codeError != null,
+                    supportingText = codeError?. let { { Text(it) } },
+                    enabled = !isLoading,
                     modifier = Modifier. fillMaxWidth()
                 )
-                if (errorMessage.isNotEmpty()) {
-                    Text(
-                        text = errorMessage,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall
-                    )
+
+                if (isLoading) {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 }
-                Text(
-                    text = "Example: STEP-A1B2C3",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
         },
         confirmButton = {
-            Button(
+            TextButton(
                 onClick = {
                     when {
-                        friendCode.isBlank() -> errorMessage = "Please enter a friend code"
-                        friendCode.replace("-", "").length < 4 -> errorMessage = "Friend code too short"
-                        else -> onAddFriend(friendCode. trim())
+                        friendCode.isBlank() -> {
+                            codeError = "Friend code is required"
+                        }
+                        ! friendCode.matches(Regex("STEP-[A-Z0-9]{4}")) -> {
+                            codeError = "Invalid friend code format (STEP-XXXX)"
+                        }
+                        else -> {
+                            onAddFriend(friendCode. trim())
+                        }
                     }
-                }
+                },
+                enabled = !isLoading
             ) {
-                Text("Send Request")
+                Text("Add")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(
+                onClick = onDismiss,
+                enabled = !isLoading
+            ) {
                 Text("Cancel")
             }
         }
@@ -229,7 +188,7 @@ fun AddFriendDialog(
 }
 
 @Composable
-fun FriendsTab(friends: List<Friend>, viewModel: SocialViewModel) {
+fun FriendsTab(friends: List<Friend>, viewModel:  SocialViewModel) {
     if (friends.isEmpty()) {
         Box(
             modifier = Modifier. fillMaxSize(),
@@ -240,10 +199,10 @@ fun FriendsTab(friends: List<Friend>, viewModel: SocialViewModel) {
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(
-                    Icons.Default. Person,
+                    imageVector = Icons.Default.Person,
                     contentDescription = null,
                     modifier = Modifier.size(64.dp),
-                    tint = MaterialTheme.colorScheme. onSurfaceVariant
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     text = "No friends yet",
@@ -251,7 +210,7 @@ fun FriendsTab(friends: List<Friend>, viewModel: SocialViewModel) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = "Tap + to add friends and compete! ",
+                    text = "Tap + to add friends! ",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -268,6 +227,76 @@ fun FriendsTab(friends: List<Friend>, viewModel: SocialViewModel) {
                 FriendItem(friend, viewModel)
             }
         }
+    }
+}
+
+@Composable
+fun FriendItem(friend: Friend, viewModel: SocialViewModel) {
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = Modifier. fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                horizontalArrangement = Arrangement. spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Column {
+                    Text(
+                        text = friend.friendName,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = friend.friendEmail,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            IconButton(onClick = { showDeleteDialog = true }) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Remove Friend",
+                    tint = MaterialTheme.colorScheme.error
+                )
+            }
+        }
+    }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Remove Friend") },
+            text = { Text("Are you sure you want to remove ${friend.friendName} from your friends?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.removeFriend(friend.id)
+                        showDeleteDialog = false
+                    }
+                ) {
+                    Text("Remove", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
@@ -299,112 +328,7 @@ fun RequestsTab(requests: List<Friend>, viewModel: SocialViewModel) {
 }
 
 @Composable
-fun LeaderboardTab(viewModel: SocialViewModel) {
-    val globalLeaderboard by viewModel.globalLeaderboard.collectAsState()
-
-    if (globalLeaderboard.isEmpty()) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment. Center
-        ) {
-            CircularProgressIndicator()
-        }
-    } else {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            item {
-                Text(
-                    text = "Global Rankings",
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-            }
-
-            itemsIndexed(globalLeaderboard) { index, entry ->
-                GlobalLeaderboardItem(entry = entry, rank = index + 1)
-            }
-        }
-    }
-}
-
-@Composable
-fun GlobalLeaderboardItem(entry:  com.stepsync.data.model.LeaderboardEntry, rank: Int) {
-    Card(
-        modifier = Modifier. fillMaxWidth(),
-        colors = if (entry.isCurrentUser) {
-            CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.secondaryContainer
-            )
-        } else {
-            CardDefaults. cardColors()
-        }
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment. CenterVertically
-        ) {
-            Row(
-                horizontalArrangement = Arrangement. spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
-            ) {
-                // Rank badge
-                Surface(
-                    shape = MaterialTheme.shapes.small,
-                    color = when (rank) {
-                        1 -> MaterialTheme.colorScheme.primary
-                        2 -> MaterialTheme.colorScheme. secondary
-                        3 -> MaterialTheme.colorScheme.tertiary
-                        else -> MaterialTheme.colorScheme.surfaceVariant
-                    }
-                ) {
-                    Text(
-                        text = "#$rank",
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = if (rank <= 3) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                Column {
-                    Text(
-                        text = entry.userName + if (entry.isCurrentUser) " (You)" else "",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = if (entry.isCurrentUser) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme. colorScheme.onSurface
-                    )
-                }
-            }
-
-            // Total Steps
-            Column(
-                horizontalAlignment = Alignment.End
-            ) {
-                Text(
-                    text = "${entry.steps}",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    text = "total steps",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun FriendItem(friend: Friend, viewModel: SocialViewModel) {
-    var showDeleteDialog by remember { mutableStateOf(false) }
-
+fun FriendRequestItem(request: Friend, viewModel: SocialViewModel) {
     Card(
         modifier = Modifier. fillMaxWidth()
     ) {
@@ -413,7 +337,7 @@ fun FriendItem(friend: Friend, viewModel: SocialViewModel) {
                 .fillMaxWidth()
                 .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment. CenterVertically
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Row(
                 horizontalArrangement = Arrangement. spacedBy(12.dp),
@@ -421,79 +345,9 @@ fun FriendItem(friend: Friend, viewModel: SocialViewModel) {
                 modifier = Modifier.weight(1f)
             ) {
                 Icon(
-                    Icons.Default. Person,
+                    imageVector = Icons.Default.Person,
                     contentDescription = null,
-                    modifier = Modifier.size(40.dp)
-                )
-                Column {
-                    Text(
-                        text = friend.friendName,
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Text(
-                        text = friend.friendEmail,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            OutlinedButton(
-                onClick = { showDeleteDialog = true }
-            ) {
-                Text("Remove")
-            }
-        }
-    }
-
-    if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Remove Friend") },
-            text = { Text("Are you sure you want to remove ${friend.friendName} from your friends?") },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        viewModel.removeFriend(friend.id)
-                        showDeleteDialog = false
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Text("Remove")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
-}
-
-@Composable
-fun FriendRequestItem(request:  Friend, viewModel: SocialViewModel) {
-    Card(
-        modifier = Modifier. fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment. CenterVertically
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment. CenterVertically,
-                modifier = Modifier.weight(1f)
-            ) {
-                Icon(
-                    Icons.Default. Person,
-                    contentDescription = null,
-                    modifier = Modifier.size(40.dp)
+                    tint = MaterialTheme.colorScheme.primary
                 )
                 Column {
                     Text(
@@ -509,17 +363,112 @@ fun FriendRequestItem(request:  Friend, viewModel: SocialViewModel) {
             }
 
             Row(
-                horizontalArrangement = Arrangement. spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                OutlinedButton(
+                IconButton(
+                    onClick = { viewModel. acceptFriendRequest(request.id) }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = "Accept",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                IconButton(
                     onClick = { viewModel.removeFriend(request.id) }
                 ) {
-                    Text("Decline")
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Decline",
+                        tint = MaterialTheme.colorScheme.error
+                    )
                 }
-                Button(
-                    onClick = { viewModel.acceptFriendRequest(request.id) }
-                ) {
-                    Text("Accept")
+            }
+        }
+    }
+}
+
+@Composable
+fun LeaderboardTab(viewModel: SocialViewModel) {
+    val globalLeaderboard by viewModel.globalLeaderboard.collectAsState()
+
+    if (globalLeaderboard.isEmpty()) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment. Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                CircularProgressIndicator()
+                Text(
+                    text = "Loading leaderboard.. .",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    } else {
+        LazyColumn(
+            modifier = Modifier
+                . fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement. spacedBy(8.dp)
+        ) {
+            items(globalLeaderboard) { entry ->
+                LeaderboardItem(entry)
+            }
+        }
+    }
+}
+
+@Composable
+fun LeaderboardItem(entry: LeaderboardEntry) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = if (entry.isCurrentUser) {
+            CardDefaults. cardColors(
+                containerColor = MaterialTheme.colorScheme. primaryContainer
+            )
+        } else {
+            CardDefaults.cardColors()
+        }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Rank
+                Text(
+                    text = "#${entry.rank}",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = when (entry.rank) {
+                        1 -> MaterialTheme. colorScheme.primary
+                        2 -> MaterialTheme.colorScheme.secondary
+                        3 -> MaterialTheme.colorScheme.tertiary
+                        else -> MaterialTheme.colorScheme.onSurface
+                    }
+                )
+
+                // User info
+                Column {
+                    Text(
+                        text = if (entry.isCurrentUser) "${entry.userName} (You)" else entry.userName,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = "${entry.steps} steps",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme. onSurfaceVariant
+                    )
                 }
             }
         }
