@@ -17,6 +17,9 @@ import androidx. compose.ui.platform.LocalContext
 import androidx.compose.ui. text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import com.stepsync.data.model.Achievement
 import com.stepsync.data.model.User
 
 @Composable
@@ -26,6 +29,7 @@ fun ProfileScreen(
     onNavigateBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val achievements by viewModel.achievements.collectAsState()
 
     when (uiState) {
         is ProfileUiState.Loading -> {
@@ -46,7 +50,8 @@ fun ProfileScreen(
                     viewModel.logout()
                     onNavigateToLogin()
                 },
-                onNavigateBack = onNavigateBack
+                onNavigateBack = onNavigateBack,
+                achievements = achievements
             )
         }
         is ProfileUiState.Error -> {
@@ -62,6 +67,8 @@ fun ProfileScreen(
             }
         }
     }
+
+
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -70,7 +77,8 @@ private fun ProfileContent(
     user: User,
     onLogout: () -> Unit,
     onNavigateBack: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    achievements: List<Achievement> = emptyList()
 ) {
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -187,6 +195,51 @@ private fun ProfileContent(
                 }
             }
 
+            if (achievements.isNotEmpty()) {
+                Text(
+                    text = "Achievements",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(top = 24.dp, bottom = 8.dp)
+                )
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(achievements) { achievement ->
+                        Card(
+                            modifier = Modifier
+                                .width(140.dp)
+                                .height(100.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer
+                            ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(10.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Person, // Replace with a custom icon if desired
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                                Text(
+                                    text = achievement.title,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(top = 8.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             // Personal Information Card
             Card(
                 modifier = Modifier. fillMaxWidth()
@@ -213,6 +266,8 @@ private fun ProfileContent(
                     ProfileInfoRow(label = "Daily Step Goal", value = "${user.dailyStepGoal} steps")
                     Divider()
                     ProfileInfoRow(label = "Fitness Goal", value = formatFitnessGoal(user.fitnessGoal))
+
+
                 }
             }
 

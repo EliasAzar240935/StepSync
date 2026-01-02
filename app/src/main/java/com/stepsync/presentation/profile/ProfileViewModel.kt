@@ -6,6 +6,7 @@ import androidx. lifecycle.ViewModel
 import androidx. lifecycle.viewModelScope
 import com.stepsync.data.model.User
 import com.stepsync.domain.repository.UserRepository
+import com.stepsync.domain.repository.AchievementRepository
 import com.stepsync. util.Constants
 import dagger. hilt.android.lifecycle. HiltViewModel
 import kotlinx. coroutines.flow.MutableStateFlow
@@ -19,6 +20,7 @@ import javax.inject.Inject
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val userRepository: UserRepository,
+    private val achievementRepository: AchievementRepository,
     private val sharedPreferences: SharedPreferences
 ) : ViewModel() {
 
@@ -31,8 +33,23 @@ class ProfileViewModel @Inject constructor(
     private val _achievementCount = MutableStateFlow(0)
     val achievementCount: StateFlow<Int> = _achievementCount.asStateFlow()
 
+    private val _achievements = MutableStateFlow<List<com.stepsync.data.model.Achievement>>(emptyList())
+    val achievements: StateFlow<List<com.stepsync.data.model.Achievement>> = _achievements.asStateFlow()
+
     init {
         checkAuthAndLoadUser()
+        observeAchievements()
+    }
+
+    private fun observeAchievements(){
+        viewModelScope.launch {
+            val userId = sharedPreferences.getString(Constants.KEY_USER_ID, null)
+            if(!userId.isNullOrBlank()){
+                achievementRepository.getAllAchievements(userId).collect { list ->
+                    _achievements.value = list
+                }
+            }
+        }
     }
 
     private fun checkAuthAndLoadUser() {

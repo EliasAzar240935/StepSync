@@ -118,6 +118,9 @@ class FirebaseAchievementRepository @Inject constructor(
                 .toSet()
 
             // Check for step milestones
+            if (totalSteps >= 100 && ! existingAchievements.contains("first_100")){
+                unlockAchievement(userId, "first_100", "First 100", "Baby Steps")
+            }
             if (totalSteps >= 1000 && ! existingAchievements.contains("first_1k")) {
                 unlockAchievement(userId, "first_1k", "First 1K", "Walk your first 1,000 steps")
             }

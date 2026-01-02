@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow. Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks. await
 import android.content.Context
+import com.stepsync.domain.repository.AchievementRepository
 import com.stepsync.util.NotificationHelper
 import javax.inject.Inject
 
@@ -19,7 +20,8 @@ import javax.inject.Inject
 class FirebaseStepRepository @Inject constructor(
     private val auth: FirebaseAuth,
     private val firestore: FirebaseFirestore,
-    private val context: Context
+    private val context: Context,
+    private val achievementRepository: AchievementRepository
 ) : StepRecordRepository {
 
     private val stepRecordsCollection = firestore.collection("stepRecords")
@@ -66,6 +68,37 @@ class FirebaseStepRepository @Inject constructor(
 
             // Update goal progress after inserting
             updateGoalProgress(currentUser.uid)
+
+            // === 1. COLLECT ALL STEP RECORDS FOR USER ===
+            val stepRecords = stepRecordsCollection
+                .whereEqualTo("userId", currentUser.uid)
+                .get()
+                .await()
+                .documents
+                .mapNotNull { it.toObject(StepRecord::class.java) }
+
+// === 2. CALCULATE TOTAL STEPS ===
+            val totalSteps = stepRecords.sumOf { it.steps }
+
+            // === 3. CALCULATE CONSECUTIVE DAY STREAK ===
+            fun calculateStreak(records: List<StepRecord>): Int {
+                if (records.isEmpty()) return 0
+                val sdf = java.text.SimpleDateFormat("yyyy-MM-dd")
+                val dates = records.map { sdf.parse(it.date)!! }.sortedDescending()
+                var streak = 1
+                for (i in 1 until dates.size) {
+                    val diff = ((dates[i-1].time - dates[i].time) / (1000 * 60 * 60 * 24)).toInt()
+                    if (diff == 1) streak++
+                    else break
+                }
+                return streak
+            }
+            val consecutiveDays = calculateStreak(stepRecords)
+
+// === 4. CHECK ACHIEVEMENTS ===
+            achievementRepository.checkAndUnlockAchievements(
+                currentUser.uid, totalSteps, consecutiveDays
+            )
 
             return documentRef. id. hashCode().toLong()
         } catch (e: Exception) {
@@ -271,6 +304,38 @@ class FirebaseStepRepository @Inject constructor(
             }
 
             updateGoalProgress(currentUser.uid)
+
+            // Update goal progress after inserting
+            updateGoalProgress(currentUser.uid)
+
+// === Begin Achievements block ===
+            val stepRecords = stepRecordsCollection
+                .whereEqualTo("userId", currentUser.uid)
+                .get()
+                .await()
+                .documents
+                .mapNotNull { it.toObject(StepRecord::class.java) }
+
+            val totalSteps = stepRecords.sumOf { it.steps }
+
+            fun calculateStreak(records: List<StepRecord>): Int {
+                if (records.isEmpty()) return 0
+                val sdf = java.text.SimpleDateFormat("yyyy-MM-dd")
+                val dates = records.map { sdf.parse(it.date)!! }.sortedDescending()
+                var streak = 1
+                for (i in 1 until dates.size) {
+                    val diff = ((dates[i-1].time - dates[i].time) / (1000 * 60 * 60 * 24)).toInt()
+                    if (diff == 1) streak++
+                    else break
+                }
+                return streak
+            }
+            val consecutiveDays = calculateStreak(stepRecords)
+
+            achievementRepository.checkAndUnlockAchievements(
+                currentUser.uid, totalSteps, consecutiveDays
+            )
+// === End Achievements block ===
 
         } catch (e: Exception) {
             throw Exception("Failed to save step record: ${e.message}")
