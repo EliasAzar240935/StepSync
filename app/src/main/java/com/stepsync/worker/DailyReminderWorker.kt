@@ -1,43 +1,68 @@
 package com.stepsync.worker
 
 import android.content.Context
-import android.content. SharedPreferences
-import androidx.hilt.work.HiltWorker
+import android.content.SharedPreferences
+import android.util.Log
 import androidx.work. CoroutineWorker
 import androidx.work.WorkerParameters
-import com.stepsync.domain.repository.StepRecordRepository
-import com.stepsync.domain.repository.UserRepository
+import com.google.firebase.auth.FirebaseAuth
+import com.google. firebase.firestore.FirebaseFirestore
 import com.stepsync.util.Constants
-import com.stepsync.util.DateUtils
 import com.stepsync. util.NotificationHelper
-import dagger.assisted.Assisted
-import dagger.assisted.AssistedInject
-import kotlinx.coroutines.flow. first
+import kotlinx.coroutines.tasks.await
+import java.text.SimpleDateFormat
+import java. util.*
 
-@HiltWorker
-class DailyReminderWorker @AssistedInject constructor(
-    @Assisted context: Context,
-    @Assisted workerParams: WorkerParameters,
-    private val stepRecordRepository: StepRecordRepository,
-    private val userRepository: UserRepository,
-    private val sharedPreferences: SharedPreferences
-) : CoroutineWorker(context, workerParams) {
+class DailyReminderWorker(
+    private val context: Context,
+    params: WorkerParameters
+) : CoroutineWorker(context, params) {
+
+    private val firestore = FirebaseFirestore.getInstance()
+    private val auth = FirebaseAuth.getInstance()
 
     override suspend fun doWork(): Result {
         return try {
-            val userId = sharedPreferences.getString(Constants.KEY_USER_ID, "") ?: ""
-            if (userId. isEmpty()) return Result.success()
+            Log.d("DailyReminderWorker", "🔔 Running daily reminder check...")
 
-            val currentUser = userRepository.getCurrentUser().first()
-            val todaySteps = stepRecordRepository.observeStepRecordByDate(userId, DateUtils.getCurrentDate()).first()
+            val currentUser = auth.currentUser
+            if (currentUser == null) {
+                Log. d("DailyReminderWorker", "No user logged in, skipping")
+                return Result.success()
+            }
 
-            val currentSteps = todaySteps?. steps ?: 0
-            val goalSteps = currentUser?. dailyStepGoal ?: Constants.DEFAULT_DAILY_STEP_GOAL
+            // Get today's date
+            val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                .format(Date())
 
-            NotificationHelper.sendDailyReminder(applicationContext, currentSteps, goalSteps)
+            // Get today's step count
+            val stepDocs = firestore.collection("stepRecords")
+                .whereEqualTo("userId", currentUser. uid)
+                .whereEqualTo("date", today)
+                .get()
+                .await()
+
+            val currentSteps = stepDocs.documents
+                .firstOrNull()
+                ?.getLong("steps")
+                ?.toInt() ?: 0
+
+            // Get user's goal (default 10,000)
+            val userDoc = firestore.collection("users")
+                .document(currentUser. uid)
+                .get()
+                .await()
+
+            val goalSteps = userDoc.getLong("dailyStepGoal")?. toInt() ?: 10000
+
+            // Send reminder notification
+            NotificationHelper.sendDailyReminder(context, currentSteps, goalSteps)
+
+            Log.d("DailyReminderWorker", "✅ Sent reminder:  $currentSteps / $goalSteps steps")
 
             Result.success()
         } catch (e: Exception) {
+            Log.e("DailyReminderWorker", "❌ Error sending reminder", e)
             Result.failure()
         }
     }

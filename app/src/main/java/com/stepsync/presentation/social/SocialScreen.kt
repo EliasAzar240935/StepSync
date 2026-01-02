@@ -1,8 +1,11 @@
 package com.stepsync.presentation.social
 
-import androidx.compose.foundation. layout.*
-import androidx.compose. foundation.lazy.LazyColumn
+import androidx. compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy. items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose. foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose. foundation.lazy.grid.items
 import androidx.compose.material. icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material. icons.filled.ArrowBack
@@ -14,10 +17,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui. Alignment
 import androidx.compose. ui.Modifier
 import androidx. compose.ui.text.input.KeyboardType
-import androidx. compose.ui.unit.dp
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose. ui.unit.dp
+import androidx.compose. foundation.text.KeyboardOptions
 import com.stepsync.data.model.Friend
-import com.stepsync.data.model.LeaderboardEntry
+import com.stepsync. data.model.LeaderboardEntry
+import com.stepsync.util.ResponsiveUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,6 +37,12 @@ fun SocialScreen(
     var showAddFriendDialog by remember { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // ✅ Get responsive values
+    val contentPadding = ResponsiveUtils.getContentPadding()
+    val cardSpacing = ResponsiveUtils.getCardSpacing()
+    val maxContentWidth = ResponsiveUtils.getMaxContentWidth()
+    val windowSize = ResponsiveUtils.getWindowSize()
 
     // Show snackbar for success/error messages
     LaunchedEffect(uiState) {
@@ -69,33 +79,57 @@ fun SocialScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
-        Column(
+        // ✅ Center content with max width on larger screens
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(padding),
+            contentAlignment = Alignment. TopCenter
         ) {
-            TabRow(selectedTabIndex = selectedTab) {
-                Tab(
-                    selected = selectedTab == 0,
-                    onClick = { selectedTab = 0 },
-                    text = { Text("Friends (${friends.size})") }
-                )
-                Tab(
-                    selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 },
-                    text = { Text("Requests (${pendingRequests.size})") }
-                )
-                Tab(
-                    selected = selectedTab == 2,
-                    onClick = { selectedTab = 2 },
-                    text = { Text("Leaderboard") }
-                )
-            }
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .widthIn(max = maxContentWidth)  // ✅ Limit width on tablets
+            ) {
+                TabRow(selectedTabIndex = selectedTab) {
+                    Tab(
+                        selected = selectedTab == 0,
+                        onClick = { selectedTab = 0 },
+                        text = { Text("Friends (${friends.size})") }
+                    )
+                    Tab(
+                        selected = selectedTab == 1,
+                        onClick = { selectedTab = 1 },
+                        text = { Text("Requests (${pendingRequests.size})") }
+                    )
+                    Tab(
+                        selected = selectedTab == 2,
+                        onClick = { selectedTab = 2 },
+                        text = { Text("Leaderboard") }
+                    )
+                }
 
-            when (selectedTab) {
-                0 -> FriendsTab(friends, viewModel)
-                1 -> RequestsTab(pendingRequests, viewModel)
-                2 -> LeaderboardTab(viewModel)
+                when (selectedTab) {
+                    0 -> FriendsTab(
+                        friends = friends,
+                        viewModel = viewModel,
+                        contentPadding = contentPadding,
+                        cardSpacing = cardSpacing,
+                        windowSize = windowSize
+                    )
+                    1 -> RequestsTab(
+                        requests = pendingRequests,
+                        viewModel = viewModel,
+                        contentPadding = contentPadding,
+                        cardSpacing = cardSpacing,
+                        windowSize = windowSize
+                    )
+                    2 -> LeaderboardTab(
+                        viewModel = viewModel,
+                        contentPadding = contentPadding,
+                        cardSpacing = cardSpacing
+                    )
+                }
             }
         }
     }
@@ -118,7 +152,7 @@ fun SocialScreen(
 fun AddFriendDialog(
     onDismiss: () -> Unit,
     onAddFriend: (String) -> Unit,
-    isLoading: Boolean
+    isLoading:  Boolean
 ) {
     var friendCode by remember { mutableStateOf("") }
     var codeError by remember { mutableStateOf<String?>(null) }
@@ -146,9 +180,9 @@ fun AddFriendDialog(
                     placeholder = { Text("STEP-XXXX") },
                     singleLine = true,
                     isError = codeError != null,
-                    supportingText = codeError?. let { { Text(it) } },
+                    supportingText = codeError?.let { { Text(it) } },
                     enabled = !isLoading,
-                    modifier = Modifier. fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth()
                 )
 
                 if (isLoading) {
@@ -188,7 +222,13 @@ fun AddFriendDialog(
 }
 
 @Composable
-fun FriendsTab(friends: List<Friend>, viewModel:  SocialViewModel) {
+fun FriendsTab(
+    friends:  List<Friend>,
+    viewModel: SocialViewModel,
+    contentPadding: androidx.compose.ui.unit. Dp,
+    cardSpacing:  androidx.compose.ui.unit. Dp,
+    windowSize:  ResponsiveUtils.WindowSize
+) {
     if (friends.isEmpty()) {
         Box(
             modifier = Modifier. fillMaxSize(),
@@ -217,21 +257,50 @@ fun FriendsTab(friends: List<Friend>, viewModel:  SocialViewModel) {
             }
         }
     } else {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(friends) { friend ->
-                FriendItem(friend, viewModel)
+        // ✅ Adaptive layout:  List on phones, Grid on tablets
+        if (windowSize == ResponsiveUtils.WindowSize. COMPACT) {
+            // Phone:  List view
+            LazyColumn(
+                modifier = Modifier. fillMaxSize(),
+                contentPadding = PaddingValues(contentPadding),  // ✅ Responsive padding
+                verticalArrangement = Arrangement.spacedBy(cardSpacing)  // ✅ Responsive spacing
+            ) {
+                items(friends) { friend ->
+                    FriendItem(
+                        friend = friend,
+                        viewModel = viewModel,
+                        contentPadding = contentPadding
+                    )
+                }
+            }
+        } else {
+            // Tablet: Grid view
+            val columns = if (windowSize == ResponsiveUtils.WindowSize.MEDIUM) 2 else 3
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(columns),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(contentPadding),
+                horizontalArrangement = Arrangement. spacedBy(cardSpacing),
+                verticalArrangement = Arrangement.spacedBy(cardSpacing)
+            ) {
+                items(friends) { friend ->
+                    FriendItem(
+                        friend = friend,
+                        viewModel = viewModel,
+                        contentPadding = contentPadding
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-fun FriendItem(friend: Friend, viewModel: SocialViewModel) {
+fun FriendItem(
+    friend: Friend,
+    viewModel: SocialViewModel,
+    contentPadding:  androidx.compose.ui.unit. Dp = 16.dp
+) {
     var showDeleteDialog by remember { mutableStateOf(false) }
 
     Card(
@@ -240,13 +309,14 @@ fun FriendItem(friend: Friend, viewModel: SocialViewModel) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(contentPadding),  // ✅ Responsive padding
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(
-                horizontalArrangement = Arrangement. spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment. CenterVertically,
+                modifier = Modifier.weight(1f)
             ) {
                 Icon(
                     imageVector = Icons.Default.Person,
@@ -261,7 +331,7 @@ fun FriendItem(friend: Friend, viewModel: SocialViewModel) {
                     Text(
                         text = friend.friendEmail,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme. onSurfaceVariant
                     )
                 }
             }
@@ -301,10 +371,16 @@ fun FriendItem(friend: Friend, viewModel: SocialViewModel) {
 }
 
 @Composable
-fun RequestsTab(requests: List<Friend>, viewModel: SocialViewModel) {
+fun RequestsTab(
+    requests: List<Friend>,
+    viewModel: SocialViewModel,
+    contentPadding: androidx.compose.ui.unit.Dp,
+    cardSpacing: androidx.compose.ui. unit.Dp,
+    windowSize: ResponsiveUtils.WindowSize
+) {
     if (requests.isEmpty()) {
         Box(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier. fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -314,33 +390,60 @@ fun RequestsTab(requests: List<Friend>, viewModel: SocialViewModel) {
             )
         }
     } else {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(requests) { request ->
-                FriendRequestItem(request, viewModel)
+        // ✅ Adaptive layout: List on phones, Grid on tablets
+        if (windowSize == ResponsiveUtils.WindowSize. COMPACT) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(contentPadding),
+                verticalArrangement = Arrangement.spacedBy(cardSpacing)
+            ) {
+                items(requests) { request ->
+                    FriendRequestItem(
+                        request = request,
+                        viewModel = viewModel,
+                        contentPadding = contentPadding
+                    )
+                }
+            }
+        } else {
+            val columns = if (windowSize == ResponsiveUtils.WindowSize. MEDIUM) 2 else 3
+            LazyVerticalGrid(
+                columns = GridCells. Fixed(columns),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(contentPadding),
+                horizontalArrangement = Arrangement.spacedBy(cardSpacing),
+                verticalArrangement = Arrangement.spacedBy(cardSpacing)
+            ) {
+                items(requests) { request ->
+                    FriendRequestItem(
+                        request = request,
+                        viewModel = viewModel,
+                        contentPadding = contentPadding
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-fun FriendRequestItem(request: Friend, viewModel: SocialViewModel) {
+fun FriendRequestItem(
+    request: Friend,
+    viewModel: SocialViewModel,
+    contentPadding: androidx.compose.ui.unit.Dp = 16.dp
+) {
     Card(
-        modifier = Modifier. fillMaxWidth()
+        modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(contentPadding),  // ✅ Responsive padding
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(
-                horizontalArrangement = Arrangement. spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.weight(1f)
             ) {
@@ -357,7 +460,7 @@ fun FriendRequestItem(request: Friend, viewModel: SocialViewModel) {
                     Text(
                         text = request.friendEmail,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme. onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -366,7 +469,7 @@ fun FriendRequestItem(request: Friend, viewModel: SocialViewModel) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 IconButton(
-                    onClick = { viewModel. acceptFriendRequest(request.id) }
+                    onClick = { viewModel. acceptFriendRequest(request. id) }
                 ) {
                     Icon(
                         imageVector = Icons.Default.Check,
@@ -389,13 +492,17 @@ fun FriendRequestItem(request: Friend, viewModel: SocialViewModel) {
 }
 
 @Composable
-fun LeaderboardTab(viewModel: SocialViewModel) {
+fun LeaderboardTab(
+    viewModel: SocialViewModel,
+    contentPadding: androidx.compose. ui.unit.Dp,
+    cardSpacing: androidx.compose.ui.unit.Dp
+) {
     val globalLeaderboard by viewModel.globalLeaderboard.collectAsState()
 
-    if (globalLeaderboard.isEmpty()) {
+    if (globalLeaderboard. isEmpty()) {
         Box(
             modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment. Center
+            contentAlignment = Alignment.Center
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -411,25 +518,30 @@ fun LeaderboardTab(viewModel: SocialViewModel) {
         }
     } else {
         LazyColumn(
-            modifier = Modifier
-                . fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement. spacedBy(8.dp)
+            modifier = Modifier. fillMaxSize(),
+            contentPadding = PaddingValues(contentPadding),  // ✅ Responsive padding
+            verticalArrangement = Arrangement.spacedBy(cardSpacing)  // ✅ Responsive spacing
         ) {
             items(globalLeaderboard) { entry ->
-                LeaderboardItem(entry)
+                LeaderboardItem(
+                    entry = entry,
+                    contentPadding = contentPadding
+                )
             }
         }
     }
 }
 
 @Composable
-fun LeaderboardItem(entry: LeaderboardEntry) {
+fun LeaderboardItem(
+    entry: LeaderboardEntry,
+    contentPadding: androidx.compose.ui.unit.Dp = 16.dp
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = if (entry.isCurrentUser) {
-            CardDefaults. cardColors(
-                containerColor = MaterialTheme.colorScheme. primaryContainer
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer
             )
         } else {
             CardDefaults.cardColors()
@@ -438,7 +550,7 @@ fun LeaderboardItem(entry: LeaderboardEntry) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(contentPadding),  // ✅ Responsive padding
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -454,7 +566,7 @@ fun LeaderboardItem(entry: LeaderboardEntry) {
                         1 -> MaterialTheme. colorScheme.primary
                         2 -> MaterialTheme.colorScheme.secondary
                         3 -> MaterialTheme.colorScheme.tertiary
-                        else -> MaterialTheme.colorScheme.onSurface
+                        else -> MaterialTheme. colorScheme.onSurface
                     }
                 )
 
@@ -465,7 +577,7 @@ fun LeaderboardItem(entry: LeaderboardEntry) {
                         style = MaterialTheme.typography.titleMedium
                     )
                     Text(
-                        text = "${entry.steps} steps",
+                        text = "${entry. steps} steps",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme. onSurfaceVariant
                     )

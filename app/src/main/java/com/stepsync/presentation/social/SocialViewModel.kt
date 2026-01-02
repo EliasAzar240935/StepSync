@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines. flow.stateIn
+import com.stepsync.domain.repository.AchievementRepository
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -22,6 +23,7 @@ import javax.inject.Inject
 class SocialViewModel @Inject constructor(
     private val friendRepository: FriendRepository,
     private val challengeRepository: ChallengeRepository,
+    private val achievementRepository: AchievementRepository,
     private val sharedPreferences: SharedPreferences
 ) : ViewModel() {
 
@@ -61,6 +63,15 @@ class SocialViewModel @Inject constructor(
                 // ✅ Use friend code instead of email
                 friendRepository.addFriendByCode(userId, friendCode. trim())
 
+                try {
+                    val friendsCount = friendRepository.getFriendsCount(userId)
+                    achievementRepository.updateAchievementProgress(userId, "first_friend", friendsCount)
+                    achievementRepository.updateAchievementProgress(userId, "friend_5", friendsCount)
+                    achievementRepository.updateAchievementProgress(userId, "friend_10", friendsCount)
+                    Log.d("SocialViewModel", "Updated friend achievements: $friendsCount friends")
+                } catch (e:  Exception) {
+                    Log.e("SocialViewModel", "Failed to update achievement", e)
+                }
                 _uiState.value = SocialUiState.Success("Friend request sent!")
                 Log.d("SocialViewModel", "Friend request sent successfully")
             } catch (e: Exception) {

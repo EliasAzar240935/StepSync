@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseUser
 import com.stepsync. data.model.User
+import com.stepsync.domain.repository.AchievementRepository
 import com.stepsync.domain.repository.AuthRepository
 import com.stepsync.domain.repository.UserRepository
 import com.stepsync.util.Constants
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines. flow.stateIn
+import android.util.Log
 import kotlinx.coroutines.launch
 import javax. inject.Inject
 
@@ -24,7 +26,8 @@ import javax. inject.Inject
 class AuthViewModel @Inject constructor(
     private val userRepository: UserRepository,
     private val authRepository: AuthRepository,
-    private val sharedPreferences: SharedPreferences
+    private val sharedPreferences: SharedPreferences,
+    private val achievementRepository: AchievementRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<AuthUiState>(AuthUiState. Idle)
@@ -55,6 +58,12 @@ class AuthViewModel @Inject constructor(
                 val user = userRepository.authenticateUser(email, password)
                 if (user != null) {
                     saveUserSession(user)
+                    try {
+                        achievementRepository. initializeAchievementsForUser(user.id)
+                        Log.d("AuthViewModel", "✅ Achievements checked/initialized")
+                    } catch (e: Exception) {
+                        Log.e("AuthViewModel", "⚠️ Failed to initialize achievements", e)
+                    }
                     _uiState.value = AuthUiState.Success(user)
                 } else {
                     _uiState.value = AuthUiState.Error("Invalid email or password")
@@ -123,6 +132,15 @@ class AuthViewModel @Inject constructor(
                     height = height,
                     fitnessGoal = fitnessGoal
                 )
+
+                // ✅ ADD THIS: Initialize achievements for new user
+                try {
+                    Log.d("AuthViewModel", "🏆 Initializing achievements for new user...")
+                    achievementRepository.initializeAchievementsForUser(userId)
+                    Log.d("AuthViewModel", "✅ Achievements initialized")
+                } catch (e: Exception) {
+                    Log.e("AuthViewModel", "⚠️ Failed to initialize achievements", e)
+                }
 
                 // After successful registration, authenticate to get user data
                 val user = userRepository.authenticateUser(email, password)

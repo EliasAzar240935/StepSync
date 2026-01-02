@@ -110,7 +110,13 @@ fun Achievement.toFirestoreMap(firebaseUid: String): Map<String, Any> {
         "achievementType" to achievementType,
         "title" to title,
         "description" to description,
+        "category" to category.name,
+        "tier" to tier.name,
         "iconName" to iconName,
-        "unlockedAt" to unlockedAt
+        "requirement" to requirement,
+        "currentProgress" to currentProgress,
+        "isUnlocked" to isUnlocked,
+        "unlockedAt" to unlockedAt,
+        "points" to points
     )
 }

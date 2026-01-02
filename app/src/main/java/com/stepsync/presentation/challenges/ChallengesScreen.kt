@@ -1,8 +1,11 @@
-package com.stepsync.presentation. challenges
+package com.stepsync.presentation.challenges
 
-import androidx.compose.foundation.layout.*
+import androidx. compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy. items
+import androidx.compose.foundation. lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose. foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose. foundation.lazy.grid.items
 import androidx.compose.material. icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose. material. icons.filled.EmojiEvents
@@ -11,12 +14,13 @@ import androidx.compose.material. icons.filled.Timer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui. Alignment
-import androidx.compose.ui. Modifier
-import androidx.compose. ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
+import androidx.compose. ui.Modifier
+import androidx. compose.ui.text.style.TextOverflow
+import androidx. compose.ui.unit.dp
 import com.stepsync.data.model.Challenge
+import com.stepsync.util.ResponsiveUtils
 import java.text.SimpleDateFormat
-import java. util.*
+import java.util.*
 
 /**
  * Main Challenges screen - browse and join challenges
@@ -36,6 +40,12 @@ fun ChallengesScreen(
     var showSnackbar by remember { mutableStateOf(false) }
     var snackbarMessage by remember { mutableStateOf("") }
 
+    // ✅ Get responsive values
+    val contentPadding = ResponsiveUtils.getContentPadding()
+    val cardSpacing = ResponsiveUtils.getCardSpacing()
+    val maxContentWidth = ResponsiveUtils.getMaxContentWidth()
+    val windowSize = ResponsiveUtils.getWindowSize()
+
     // Handle UI state changes
     LaunchedEffect(uiState) {
         when (uiState) {
@@ -44,10 +54,10 @@ fun ChallengesScreen(
                 showSnackbar = true
                 viewModel.resetUiState()
             }
-            is ChallengeUiState. Error -> {
-                snackbarMessage = (uiState as ChallengeUiState.Error).message
+            is ChallengeUiState.Error -> {
+                snackbarMessage = (uiState as ChallengeUiState. Error).message
                 showSnackbar = true
-                viewModel.resetUiState()
+                viewModel. resetUiState()
             }
             else -> {}
         }
@@ -72,66 +82,100 @@ fun ChallengesScreen(
                             Text("Dismiss")
                         }
                     },
-                    modifier = Modifier.padding(16.dp)
+                    modifier = Modifier.padding(contentPadding)
                 ) {
                     Text(snackbarMessage)
                 }
             }
         }
     ) { padding ->
-        Column(
+        // ✅ Center content with max width on larger screens
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(padding),
+            contentAlignment = Alignment. TopCenter
         ) {
-            TabRow(selectedTabIndex = selectedTab) {
-                Tab(
-                    selected = selectedTab == 0,
-                    onClick = { selectedTab = 0 },
-                    text = { Text("All Challenges") }
-                )
-                Tab(
-                    selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 },
-                    text = { Text("My Challenges") }
-                )
-            }
-
-            val challenges = if (selectedTab == 0) activeChallenges else myChallenges
-
-            if (uiState is ChallengeUiState.Loading) {
-                Box(
-                    modifier = Modifier. fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
-            } else if (challenges.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = if (selectedTab == 0)
-                            "No active challenges available.\nCheck back later!"
-                        else
-                            "You haven't joined any challenges yet.\nBrowse and join one! ",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .widthIn(max = maxContentWidth)  // ✅ Limit width on tablets
+            ) {
+                TabRow(selectedTabIndex = selectedTab) {
+                    Tab(
+                        selected = selectedTab == 0,
+                        onClick = { selectedTab = 0 },
+                        text = { Text("All Challenges") }
+                    )
+                    Tab(
+                        selected = selectedTab == 1,
+                        onClick = { selectedTab = 1 },
+                        text = { Text("My Challenges") }
                     )
                 }
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(challenges) { challenge ->
-                        ChallengeCard(
-                            challenge = challenge,
-                            onClick = { onNavigateToChallengeDetail(challenge.id) }
-                        )
+
+                val challenges = if (selectedTab == 0) activeChallenges else myChallenges
+
+                when {
+                    uiState is ChallengeUiState.Loading -> {
+                        Box(
+                            modifier = Modifier. fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                    challenges.isEmpty() -> {
+                        Box(
+                            modifier = Modifier. fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = if (selectedTab == 0)
+                                    "No active challenges available.\nCheck back later!"
+                                else
+                                    "You haven't joined any challenges yet.\nBrowse and join one! ",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    else -> {
+                        // ✅ Adaptive layout:  List on phones, Grid on tablets
+                        if (windowSize == ResponsiveUtils.WindowSize. COMPACT) {
+                            // Phone:  List view
+                            LazyColumn(
+                                modifier = Modifier. fillMaxSize(),
+                                contentPadding = PaddingValues(contentPadding),
+                                verticalArrangement = Arrangement. spacedBy(cardSpacing)
+                            ) {
+                                items(challenges) { challenge ->
+                                    ChallengeCard(
+                                        challenge = challenge,
+                                        onClick = { onNavigateToChallengeDetail(challenge.id) },
+                                        contentPadding = contentPadding
+                                    )
+                                }
+                            }
+                        } else {
+                            // Tablet: Grid view
+                            val columns = if (windowSize == ResponsiveUtils.WindowSize.MEDIUM) 2 else 3
+                            LazyVerticalGrid(
+                                columns = GridCells.Fixed(columns),
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(contentPadding),
+                                horizontalArrangement = Arrangement. spacedBy(cardSpacing),
+                                verticalArrangement = Arrangement.spacedBy(cardSpacing)
+                            ) {
+                                items(challenges) { challenge ->
+                                    ChallengeCard(
+                                        challenge = challenge,
+                                        onClick = { onNavigateToChallengeDetail(challenge. id) },
+                                        contentPadding = contentPadding
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -143,14 +187,15 @@ fun ChallengesScreen(
 @Composable
 fun ChallengeCard(
     challenge: Challenge,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    contentPadding: androidx.compose.ui.unit.Dp = 16.dp
 ) {
     Card(
         modifier = Modifier. fillMaxWidth(),
         onClick = onClick
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier. padding(contentPadding),  // ✅ Responsive padding
             verticalArrangement = Arrangement. spacedBy(12.dp)
         ) {
             // Challenge name
@@ -176,7 +221,7 @@ fun ChallengeCard(
                         Text(
                             text = "ACTIVE",
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            style = MaterialTheme. typography.labelSmall,
+                            style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     }
@@ -187,14 +232,14 @@ fun ChallengeCard(
             Text(
                 text = challenge.description,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme. colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
 
             // Challenge details
             Row(
-                modifier = Modifier. fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 // Step goal
@@ -255,7 +300,7 @@ fun ChallengeCard(
 /**
  * Format date range for display
  */
-private fun formatDateRange(startDate: Long, endDate: Long): String {
+private fun formatDateRange(startDate:  Long, endDate: Long): String {
     val dateFormat = SimpleDateFormat("MMM dd", Locale.getDefault())
     val start = dateFormat.format(Date(startDate))
     val end = dateFormat.format(Date(endDate))

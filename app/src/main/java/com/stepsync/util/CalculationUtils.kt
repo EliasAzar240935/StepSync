@@ -20,7 +20,7 @@ object CalculationUtils {
      * @return Distance in meters
      */
     fun calculateDistance(steps: Int): Float {
-        return steps * AVERAGE_STEP_LENGTH
+        return steps * 0.762f
     }
 
     /**

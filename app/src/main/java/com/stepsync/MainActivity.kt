@@ -16,6 +16,8 @@ import androidx.core.content.ContextCompat
 import com.stepsync.presentation.StepSyncApp
 import com.stepsync.presentation.theme.StepSyncTheme
 import com.stepsync.service.StepCounterService
+import com.stepsync.util.NotificationHelper
+import com.stepsync.util.ReminderScheduler
 import com.stepsync.util.Constants
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -36,7 +38,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+        NotificationHelper.createNotificationChannels(this)
+        ReminderScheduler.scheduleDailyReminder(
+            context = this,
+            hourOfDay = 20,  // 8 PM
+            minute = 0
+        )
         setContent {
             StepSyncTheme {
                 Surface(

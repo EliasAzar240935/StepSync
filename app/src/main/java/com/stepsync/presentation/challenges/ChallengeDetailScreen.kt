@@ -1,35 +1,42 @@
-package com.stepsync.presentation. challenges
+package com.stepsync.presentation.challenges
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy. items
-import androidx.compose.material. icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material. icons.filled.EmojiEvents
+import androidx.compose.foundation. layout.*
+import androidx.compose. foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose. material.icons.Icons
+import androidx. compose.material.icons.filled. ArrowBack
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui. Alignment
-import androidx.compose. ui.Modifier
-import androidx. compose.ui.text.font.FontWeight
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.stepsync.data.model.Challenge
-import com. stepsync.data.model. LeaderboardEntry
+import com.stepsync.data. model.Challenge
+import com.stepsync.data.model.LeaderboardEntry
+import com.stepsync.util.ResponsiveUtils
 import java.text.SimpleDateFormat
-import java. util.*
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChallengeDetailScreen(
     challengeId: String,
-    viewModel:  ChallengeViewModel,
+    viewModel: ChallengeViewModel,
     onNavigateBack: () -> Unit
 ) {
     val challenge by viewModel.selectedChallenge.collectAsState()
     val userParticipation by viewModel.userParticipation.collectAsState()
-    val leaderboard by viewModel.leaderboard. collectAsState()
+    val leaderboard by viewModel.leaderboard.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
 
     var hasJoined by remember { mutableStateOf(false) }
+
+    // ✅ Get responsive values
+    val contentPadding = ResponsiveUtils.getContentPadding()
+    val cardSpacing = ResponsiveUtils.getCardSpacing()
+    val maxContentWidth = ResponsiveUtils.getMaxContentWidth()
+    val windowSize = ResponsiveUtils.getWindowSize()
 
     LaunchedEffect(challengeId) {
         viewModel.loadChallengeDetails(challengeId)
@@ -38,7 +45,7 @@ fun ChallengeDetailScreen(
 
     LaunchedEffect(uiState) {
         when (uiState) {
-            is ChallengeUiState.Success -> {
+            is ChallengeUiState. Success -> {
                 hasJoined = viewModel.hasJoinedChallenge(challengeId)
                 viewModel.resetUiState()
             }
@@ -55,7 +62,7 @@ fun ChallengeDetailScreen(
                         viewModel.clearSelectedChallenge()
                         onNavigateBack()
                     }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons. Default.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
@@ -66,59 +73,74 @@ fun ChallengeDetailScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues),
-                contentAlignment = Alignment. Center
+                contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator()
             }
         } else {
-            LazyColumn(
+            // ✅ Center content with max width on larger screens
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(paddingValues),
+                contentAlignment = Alignment.TopCenter
             ) {
-                // Challenge Header
-                item {
-                    ChallengeHeader(
-                        challenge = challenge!! ,
-                        hasJoined = hasJoined,
-                        onJoinClick = { viewModel.joinChallenge(challengeId) },
-                        onLeaveClick = { viewModel.leaveChallenge(challengeId) },
-                        isLoading = uiState is ChallengeUiState. Loading
-                    )
-                }
-
-                // User Progress (if joined)
-                if (hasJoined && userParticipation != null) {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .widthIn(max = maxContentWidth)  // ✅ Limit width on tablets
+                        .padding(contentPadding),  // ✅ Responsive padding
+                    verticalArrangement = Arrangement.spacedBy(cardSpacing)  // ✅ Responsive spacing
+                ) {
+                    // Challenge Header
                     item {
-                        UserProgressCard(
-                            participation = userParticipation!!,
-                            challenge = challenge!!
+                        ChallengeHeader(
+                            challenge = challenge!! ,
+                            hasJoined = hasJoined,
+                            onJoinClick = { viewModel.joinChallenge(challengeId) },
+                            onLeaveClick = { viewModel.leaveChallenge(challengeId) },
+                            isLoading = uiState is ChallengeUiState. Loading,
+                            contentPadding = contentPadding,
+                            windowSize = windowSize
                         )
                     }
-                }
 
-                // Leaderboard
-                item {
-                    Text(
-                        text = "Leaderboard",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+                    // User Progress (if joined)
+                    if (hasJoined && userParticipation != null) {
+                        item {
+                            UserProgressCard(
+                                participation = userParticipation!!,
+                                challenge = challenge!!,
+                                contentPadding = contentPadding
+                            )
+                        }
+                    }
 
-                if (leaderboard.isEmpty()) {
+                    // Leaderboard Header
                     item {
                         Text(
-                            text = "No participants yet.  Be the first to join!",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            text = "Leaderboard",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
                         )
                     }
-                } else {
-                    items(leaderboard) { entry ->
-                        LeaderboardItem(entry = entry)
+
+                    // Leaderboard Content
+                    if (leaderboard. isEmpty()) {
+                        item {
+                            Text(
+                                text = "No participants yet.  Be the first to join!",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme. onSurfaceVariant
+                            )
+                        }
+                    } else {
+                        items(leaderboard) { entry ->
+                            LeaderboardItem(
+                                entry = entry,
+                                contentPadding = contentPadding
+                            )
+                        }
                     }
                 }
             }
@@ -140,12 +162,14 @@ fun ChallengeHeader(
     hasJoined:  Boolean,
     onJoinClick: () -> Unit,
     onLeaveClick: () -> Unit,
-    isLoading: Boolean
+    isLoading: Boolean,
+    contentPadding: androidx.compose.ui.unit. Dp,
+    windowSize: ResponsiveUtils.WindowSize
 ) {
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
 
     Card(
-        modifier = Modifier. fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer
         )
@@ -153,8 +177,8 @@ fun ChallengeHeader(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp),
-            verticalArrangement = Arrangement. spacedBy(12.dp)
+                .padding(contentPadding),  // ✅ Responsive padding
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Title
             Row(
@@ -162,14 +186,22 @@ fun ChallengeHeader(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(
-                    Icons.Default. EmojiEvents,
+                    Icons.Default.EmojiEvents,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier. size(32.dp)
+                    modifier = Modifier.size(
+                        when (windowSize) {
+                            ResponsiveUtils.WindowSize. COMPACT -> 32.dp
+                            else -> 40.dp
+                        }
+                    )  // ✅ Larger icon on tablets
                 )
                 Text(
                     text = challenge.name,
-                    style = MaterialTheme.typography.headlineSmall,
+                    style = when (windowSize) {
+                        ResponsiveUtils.WindowSize. COMPACT -> MaterialTheme.typography.headlineSmall
+                        else -> MaterialTheme. typography.headlineMedium
+                    },  // ✅ Larger text on tablets
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
@@ -184,36 +216,39 @@ fun ChallengeHeader(
 
             Divider()
 
-            // Challenge Info
-            Row(
-                modifier = Modifier. fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column {
-                    Text(
-                        text = "Daily Goal",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer. copy(alpha = 0.7f)
+            // ✅ Adaptive layout: Stack vertically on phones, side-by-side on tablets
+            if (windowSize == ResponsiveUtils.WindowSize.COMPACT) {
+                // Phone:  Vertical stack
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement. spacedBy(12.dp)
+                ) {
+                    ChallengeInfoRow(
+                        label = "Daily Goal",
+                        value = "${challenge.stepGoal} steps",
+                        alignment = Alignment.Start
                     )
-                    Text(
-                        text = "${challenge.stepGoal} steps",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme. colorScheme.onPrimaryContainer
+                    ChallengeInfoRow(
+                        label = "Participants",
+                        value = "${challenge.participantCount}",
+                        alignment = Alignment.Start
                     )
                 }
-
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        text = "Participants",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+            } else {
+                // Tablet: Side-by-side
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    ChallengeInfoRow(
+                        label = "Daily Goal",
+                        value = "${challenge.stepGoal} steps",
+                        alignment = Alignment.Start
                     )
-                    Text(
-                        text = "${challenge.participantCount}",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    ChallengeInfoRow(
+                        label = "Participants",
+                        value = "${challenge.participantCount}",
+                        alignment = Alignment.End
                     )
                 }
             }
@@ -221,14 +256,14 @@ fun ChallengeHeader(
             // Dates
             Text(
                 text = "Duration:  ${dateFormat.format(Date(challenge.startDate))} - ${dateFormat.format(Date(challenge.endDate))}",
-                style = MaterialTheme. typography.bodyMedium,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer. copy(alpha = 0.8f)
             )
 
             // Join/Leave Button
             Button(
                 onClick = if (hasJoined) onLeaveClick else onJoinClick,
-                modifier = Modifier. fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 enabled = ! isLoading,
                 colors = if (hasJoined) {
                     ButtonDefaults.buttonColors(
@@ -241,7 +276,7 @@ fun ChallengeHeader(
                 if (isLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
-                        color = MaterialTheme.colorScheme.onPrimary
+                        color = MaterialTheme.colorScheme. onPrimary
                     )
                 } else {
                     Text(if (hasJoined) "Leave Challenge" else "Join Challenge")
@@ -252,17 +287,42 @@ fun ChallengeHeader(
 }
 
 @Composable
+fun ChallengeInfoRow(
+    label: String,
+    value: String,
+    alignment: Alignment. Horizontal
+) {
+    Column(horizontalAlignment = alignment) {
+        Text(
+            text = label,
+            style = MaterialTheme. typography.labelMedium,
+            color = MaterialTheme.colorScheme.onPrimaryContainer. copy(alpha = 0.7f)
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onPrimaryContainer
+        )
+    }
+}
+
+@Composable
 fun UserProgressCard(
     participation: com.stepsync.data.model.ChallengeParticipation,
-    challenge: Challenge
+    challenge: Challenge,
+    contentPadding: androidx.compose.ui.unit.Dp
 ) {
+    // ✅ ADD THESE 2 LINES
+    val durationInDays = ((challenge.endDate - challenge.startDate) / (1000 * 60 * 60 * 24)).toInt()
+    val totalGoal = challenge.stepGoal * durationInDays
     Card(
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(contentPadding),  // ✅ Responsive padding
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
@@ -308,42 +368,58 @@ fun UserProgressCard(
             }
 
             // Progress bar
-            val progress = (participation.currentSteps. toFloat() / (challenge.stepGoal * 30)).coerceIn(0f, 1f)
+            // ✅ REPLACE WITH:
+            val progress = (participation.currentSteps.toFloat() / totalGoal).coerceIn(0f, 1f)
             LinearProgressIndicator(
                 progress = progress,
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Text(
-                text = "Goal:  " + (challenge.stepGoal * 30).toString() + " steps total",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            // ✅ REPLACE WITH:
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = "Goal: ${String.format("%,d", totalGoal)} steps total",
+                    style = MaterialTheme.typography. bodySmall,
+                    color = MaterialTheme.colorScheme. onSurfaceVariant,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = "${String.format("%,d", challenge.stepGoal)} steps/day × $durationInDays days",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
 
 @Composable
-fun LeaderboardItem(entry: LeaderboardEntry) {
+fun LeaderboardItem(
+    entry: LeaderboardEntry,
+    contentPadding: androidx.compose.ui.unit.Dp = 16.dp
+) {
     Card(
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(contentPadding),  // ✅ Responsive padding
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(
                 horizontalArrangement = Arrangement. spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
             ) {
                 // Rank badge
                 Surface(
                     shape = MaterialTheme.shapes.small,
                     color = when (entry.rank) {
-                        1 -> MaterialTheme.colorScheme.primary
+                        1 -> MaterialTheme. colorScheme.primary
                         2 -> MaterialTheme.colorScheme.secondary
                         3 -> MaterialTheme.colorScheme.tertiary
                         else -> MaterialTheme.colorScheme.surfaceVariant
@@ -369,12 +445,11 @@ fun LeaderboardItem(entry: LeaderboardEntry) {
             }
 
             // Steps
-            // Steps
             Text(
-                text = entry.steps. toString(),
+                text = entry.steps.toString(),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme. primary
             )
         }
     }

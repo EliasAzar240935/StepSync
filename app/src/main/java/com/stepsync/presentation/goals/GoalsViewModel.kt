@@ -10,15 +10,20 @@ import com. stepsync.domain.repository. GoalRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow. StateFlow
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import java.util.*
+import com.stepsync.domain.repository.AchievementRepository
+import com. google.firebase.firestore.FirebaseFirestore
 import javax.inject.Inject
 
 @HiltViewModel
 class GoalsViewModel @Inject constructor(
     private val goalRepository: GoalRepository,
+    private val achievementRepository: AchievementRepository,
+    private val firestore: FirebaseFirestore,
     private val auth: FirebaseAuth
 ) : ViewModel() {
 
@@ -116,6 +121,18 @@ class GoalsViewModel @Inject constructor(
 
                 Log.d("GoalsViewModel", "Creating goal: $goal")
                 goalRepository.createGoal(goal)
+                try {
+                    val goalsCount = firestore.collection("goals")
+                        .whereEqualTo("userId", userId)
+                        .get()
+                        .await()
+                        .size()
+
+                    achievementRepository.updateAchievementProgress(userId, "first_goal", goalsCount)
+                    Log.d("GoalsViewModel", "Updated first_goal achievement progress:  $goalsCount")
+                } catch (e: Exception) {
+                    Log.e("GoalsViewModel", "Failed to update achievement", e)
+                }
                 _uiState.value = GoalUiState.Success("Goal created successfully!")
             } catch (e: Exception) {
                 Log.e("GoalsViewModel", "Error creating goal", e)

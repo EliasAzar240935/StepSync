@@ -7,11 +7,12 @@ import androidx.compose.material. icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui. Alignment
-import androidx.compose. ui.Modifier
-import androidx. compose.ui.unit.dp
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.stepsync.data.model.StepRecord
 import com. stepsync.util.Constants
+import com.stepsync.util.ResponsiveUtils
 
 /**
  * Home screen showing step count and progress
@@ -26,9 +27,14 @@ fun HomeScreen(
     onNavigateToSocial: () -> Unit,
     onNavigateToChallenges: () -> Unit
 ) {
-    val currentUser by viewModel.currentUser.collectAsState()
+    val currentUser by viewModel.currentUser. collectAsState()
     val todaySteps by viewModel.todaySteps.collectAsState()
     val recentSteps by viewModel.recentSteps. collectAsState()
+
+    // ✅ Get responsive values
+    val contentPadding = ResponsiveUtils.getContentPadding()
+    val cardSpacing = ResponsiveUtils.getCardSpacing()
+    val maxContentWidth = ResponsiveUtils.getMaxContentWidth()
 
     Scaffold(
         topBar = {
@@ -52,8 +58,8 @@ fun HomeScreen(
                 NavigationBarItem(
                     selected = false,
                     onClick = onNavigateToActivity,
-                    icon = { Icon(Icons.Default.DirectionsRun, contentDescription = "Activity") },
-                    label = { Text("Activity") }
+                    icon = { Icon(Icons.Default.Star, contentDescription = "Achievements") },
+                    label = { Text("Awards") }
                 )
                 NavigationBarItem(
                     selected = false,
@@ -76,133 +82,148 @@ fun HomeScreen(
             }
         }
     ) { padding ->
-        LazyColumn(
+        // ✅ Center content with max width on larger screens
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(padding),
+            contentAlignment = Alignment. TopCenter
         ) {
-            item {
-                currentUser?. let { user ->
-                    Text(
-                        text = "Welcome, " + user.name + "!",
-                        style = MaterialTheme.typography.headlineMedium
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .widthIn(max = maxContentWidth)  // ✅ Limit width on tablets
+                    .padding(contentPadding),  // ✅ Responsive padding
+                verticalArrangement = Arrangement. spacedBy(cardSpacing)  // ✅ Responsive spacing
+            ) {
+                item {
+                    currentUser?.let { user ->
+                        Text(
+                            text = "Welcome, ${user.name}!",
+                            style = MaterialTheme.typography.headlineMedium
+                        )
+                    }
+                }
+
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(contentPadding),  // ✅ Responsive padding
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Today's Steps",
+                                style = MaterialTheme.typography.titleLarge
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            val steps = todaySteps?.steps ?: 0
+                            Text(
+                                text = steps.toString(),
+                                style = MaterialTheme.typography.displayLarge,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            val goal = currentUser?. dailyStepGoal ?:  Constants.DEFAULT_DAILY_STEP_GOAL
+                            val progress = steps. toFloat() / goal.toFloat()
+
+                            LinearProgressIndicator(
+                                progress = progress. coerceIn(0f, 1f),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+
+                            Spacer(modifier = Modifier. height(8.dp))
+                            Text(
+                                text = "Goal: $goal steps",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
+
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(cardSpacing)  // ✅ Responsive spacing
+                    ) {
+                        Card(
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(contentPadding),  // ✅ Responsive padding
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    Icons.Default.DirectionsWalk,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(32.dp)  // ✅ Consistent icon size
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                val distance = todaySteps?.distance ?: 0f
+                                Text(
+                                    text = String.format("%.0f m", distance),
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                                Text(
+                                    text = "Distance",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
+
+                        Card(
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(contentPadding),  // ✅ Responsive padding
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    Icons.Default.LocalFireDepartment,
+                                    contentDescription = null,
+                                    modifier = Modifier. size(32.dp)  // ✅ Consistent icon size
+                                )
+                                Spacer(modifier = Modifier. height(8.dp))
+                                val calories = todaySteps?.calories ?: 0f
+                                Text(
+                                    text = "${calories.toInt()} kcal",
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                                Text(
+                                    text = "Calories",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
+                    }
+                }
+
+                items(recentSteps) { record ->
+                    StepRecordItem(
+                        record = record,
+                        contentPadding = contentPadding  // ✅ Pass responsive padding
                     )
                 }
-            }
-
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = "Today's Steps",
-                            style = MaterialTheme.typography.titleLarge
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        val steps = todaySteps?.steps ?: 0
-                        Text(
-                            text = steps.toString(),
-                            style = MaterialTheme.typography.displayLarge,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        val goal = currentUser?.dailyStepGoal ?: Constants.DEFAULT_DAILY_STEP_GOAL
-                        val progress = steps. toFloat() / goal.toFloat()
-
-                        LinearProgressIndicator(
-                            progress = progress. coerceIn(0f, 1f),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-
-                        Spacer(modifier = Modifier. height(8.dp))
-                        Text(
-                            text = "Goal: " + goal.toString() + " steps",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                }
-            }
-
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Card(
-                        modifier = Modifier. weight(1f)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Icon(Icons.Default.DirectionsWalk, contentDescription = null)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            val distance = todaySteps?.distance ?: 0f
-                            Text(
-                                text = String.format("%.2f km", distance),
-                                style = MaterialTheme.typography. titleMedium
-                            )
-                            Text(
-                                text = "Distance",
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                    }
-
-                    Card(
-                        modifier = Modifier. weight(1f)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Icon(Icons. Default.LocalFireDepartment, contentDescription = null)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            val calories = todaySteps?.calories ?: 0f
-                            Text(
-                                text = calories.toInt().toString() + " kcal",
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                            Text(
-                                text = "Calories",
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                    }
-                }
-            }
-
-            item {
-                Text(
-                    text = "Recent Activity",
-                    style = MaterialTheme.typography.titleLarge
-                )
-            }
-
-            items(recentSteps) { record ->
-                StepRecordItem(record)
             }
         }
     }
 }
 
 @Composable
-fun StepRecordItem(record: StepRecord) {
+fun StepRecordItem(
+    record: StepRecord,
+    contentPadding: androidx.compose.ui.unit. Dp = 16.dp  // ✅ Accept responsive padding
+) {
     Card(
         modifier = Modifier. fillMaxWidth()
     ) {
         Row(
             modifier = Modifier
-                . fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement. SpaceBetween,
+                .fillMaxWidth()
+                .padding(contentPadding),  // ✅ Responsive padding
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column {
@@ -211,7 +232,7 @@ fun StepRecordItem(record: StepRecord) {
                     style = MaterialTheme.typography.titleMedium
                 )
                 Text(
-                    text = record.steps. toString() + " steps",
+                    text = "${record.steps} steps",
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
@@ -219,12 +240,12 @@ fun StepRecordItem(record: StepRecord) {
                 horizontalAlignment = Alignment. End
             ) {
                 Text(
-                    text = String. format("%.2f km", record.distance),
-                    style = MaterialTheme.typography.bodyMedium
+                    text = String. format("%.0f m", record.distance),
+                    style = MaterialTheme.typography. bodyMedium
                 )
                 Text(
-                    text = record. calories.toInt().toString() + " kcal",
-                    style = MaterialTheme.typography. bodySmall
+                    text = "${record.calories. toInt()} kcal",
+                    style = MaterialTheme.typography.bodySmall
                 )
             }
         }

@@ -11,6 +11,7 @@ import com.stepsync.domain.repository.StepRecordRepository
 import com.stepsync.domain.repository.UserRepository
 import com.stepsync.util.Constants
 import com.stepsync. util.DateUtils
+import com.stepsync.domain.repository.AchievementRepository
 import dagger.hilt. android.lifecycle.HiltViewModel
 import kotlinx.coroutines. flow.*
 import kotlinx.coroutines.launch
@@ -24,6 +25,7 @@ class HomeViewModel @Inject constructor(
     private val userRepository: UserRepository,
     private val stepRecordRepository: StepRecordRepository,
     private val goalRepository: GoalRepository,
+    private val achievementRepository: AchievementRepository,
     private val sharedPreferences: SharedPreferences
 ) : ViewModel() {
 

@@ -4,7 +4,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
-import android.content. Intent
+import android. content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -20,6 +20,7 @@ object NotificationHelper {
     private const val NOTIFICATION_ID_REMINDER = 1001
     private const val NOTIFICATION_ID_GOAL = 1002
     private const val NOTIFICATION_ID_CHALLENGE = 1003
+    private const val NOTIFICATION_ID_ACHIEVEMENT_BASE = 2000
 
     fun createNotificationChannels(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES. O) {
@@ -53,12 +54,12 @@ object NotificationHelper {
     }
 
     fun sendDailyReminder(context: Context, currentSteps: Int, goalSteps: Int) {
-        val intent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        val intent = Intent(context, MainActivity:: class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent. FLAG_ACTIVITY_CLEAR_TASK
         }
         val pendingIntent = PendingIntent.getActivity(
             context, 0, intent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent. FLAG_UPDATE_CURRENT
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
         val remaining = goalSteps - currentSteps
@@ -68,7 +69,7 @@ object NotificationHelper {
             else -> "👟 You have $remaining steps left today.  Keep moving!"
         }
 
-        val notification = NotificationCompat. Builder(context, CHANNEL_ID_REMINDERS)
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID_REMINDERS)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("StepSync Reminder")
             .setContentText(message)
@@ -77,33 +78,41 @@ object NotificationHelper {
             .setAutoCancel(true)
             .build()
 
-        NotificationManagerCompat.from(context).notify(NOTIFICATION_ID_REMINDER, notification)
+        try {
+            NotificationManagerCompat.from(context).notify(NOTIFICATION_ID_REMINDER, notification)
+        } catch (e:  SecurityException) {
+            // Permission not granted
+        }
     }
 
     fun sendGoalCompletedNotification(context: Context, goalName: String, steps: Int) {
-        val intent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        val intent = Intent(context, MainActivity:: class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent. FLAG_ACTIVITY_CLEAR_TASK
         }
-        val pendingIntent = PendingIntent. getActivity(
+        val pendingIntent = PendingIntent.getActivity(
             context, 0, intent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID_PROGRESS)
-            .setSmallIcon(R.drawable.ic_notification)
+            .setSmallIcon(R. drawable.ic_notification)
             .setContentTitle("🎉 Goal Completed!")
-            .setContentText("Congratulations! You've reached your $goalName goal with $steps steps!")
-            .setPriority(NotificationCompat. PRIORITY_HIGH)
+            .setContentText("Congratulations!  You've reached your $goalName goal with $steps steps!")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .build()
 
-        NotificationManagerCompat.from(context).notify(NOTIFICATION_ID_GOAL, notification)
+        try {
+            NotificationManagerCompat.from(context).notify(NOTIFICATION_ID_GOAL, notification)
+        } catch (e: SecurityException) {
+            // Permission not granted
+        }
     }
 
-    fun sendChallengeProgressNotification(context:  Context, challengeName: String, rank: Int, totalParticipants: Int) {
-        val intent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+    fun sendChallengeProgressNotification(context: Context, challengeName: String, rank: Int, totalParticipants: Int) {
+        val intent = Intent(context, MainActivity:: class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent. FLAG_ACTIVITY_CLEAR_TASK
         }
         val pendingIntent = PendingIntent.getActivity(
             context, 0, intent,
@@ -120,11 +129,47 @@ object NotificationHelper {
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("Challenge Update")
             .setContentText(message)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setPriority(NotificationCompat. PRIORITY_DEFAULT)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .build()
 
-        NotificationManagerCompat.from(context).notify(NOTIFICATION_ID_CHALLENGE, notification)
+        try {
+            NotificationManagerCompat.from(context).notify(NOTIFICATION_ID_CHALLENGE, notification)
+        } catch (e: SecurityException) {
+            // Permission not granted
+        }
+    }
+
+    /**
+     * Send achievement unlock notification
+     */
+    fun sendAchievementNotification(context: Context, achievementTitle: String, points: Int) {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent = PendingIntent. getActivity(
+            context, 0, intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID_ACHIEVEMENTS)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle("🏆 Achievement Unlocked!")
+            .setContentText("$achievementTitle (+$points points)")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .setVibrate(longArrayOf(0, 300, 100, 300))
+            .build()
+
+        try {
+            NotificationManagerCompat.from(context).notify(
+                NOTIFICATION_ID_ACHIEVEMENT_BASE + achievementTitle.hashCode(),
+                notification
+            )
+        } catch (e: SecurityException) {
+            // Permission not granted
+        }
     }
 }

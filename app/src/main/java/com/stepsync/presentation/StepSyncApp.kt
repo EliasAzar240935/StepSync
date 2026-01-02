@@ -9,8 +9,6 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.stepsync.presentation.activity.ActivityScreen
-import com.stepsync.presentation.activity.ActivityViewModel
 import com.stepsync.presentation.auth.AuthViewModel
 import com.stepsync.presentation.auth.LoginScreen
 import com.stepsync.presentation.auth.RegisterScreen
@@ -23,6 +21,8 @@ import com.stepsync.presentation.profile.ProfileViewModel
 import com.stepsync.presentation.social.SocialScreen
 import com.stepsync.presentation.social.SocialViewModel
 import androidx.compose.ui.Alignment
+import com.stepsync.presentation.achievements.AchievementsViewModel
+import com.stepsync.presentation. achievements.AchievementsScreen
 import com.stepsync.presentation.challenges.ChallengeViewModel
 import com.stepsync. presentation.challenges.ChallengesScreen
 import com.stepsync.presentation.challenges.ChallengeDetailScreen
@@ -148,10 +148,10 @@ fun StepSyncApp(
                 }
             )
         }
-        
+
         composable(Screen.Activity.route) {
-            val viewModel: ActivityViewModel = hiltViewModel()
-            ActivityScreen(
+            val viewModel: AchievementsViewModel = hiltViewModel()
+            AchievementsScreen(
                 viewModel = viewModel,
                 onNavigateBack = {
                     navController.popBackStack()
